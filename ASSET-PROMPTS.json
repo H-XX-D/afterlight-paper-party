@@ -1,0 +1,20 @@
+[
+  {
+    "name": "city",
+    "prompt": "Use case: stylized-concept. Asset type: complete wide background painting for original browser party game AFTERLIGHT. Create an exquisitely detailed monochrome black-ink dystopian megacity viewed from a rooftop at night, Japanese/Belgian science fiction comic crosshatching, bold black shadow masses, white linework, brutalist buildings, cables, enormous moon, ventilation ducts, tiny suspended drones, fog and distant windows. A theatrical layered paper diorama with visible cut paper edges and dramatic depth, like charming 2.5D papercraft game scenery contrasted with a somber industrial world. Wide cinematic composition 1536x1024 or landscape. Foreground is a spacious dark rooftop/platform across lower third so board pieces may be laid over it in gameplay. Towers frame left and right edges; central upper moon and atmospheric skyline. Paper-white light, deep charcoal ink, strictly black white gray. Extremely crisp professional game art. No characters, no typography, no logos, no game UI. Original imagery, not copy of any existing scene.",
+    "file": "public/assets/city.png",
+    "generator": "built-in image_gen"
+  },
+  {
+    "name": "characters",
+    "prompt": "Use case: stylized-concept. Asset type: transparent sprite atlas containing four original playable paper-cutout characters for AFTERLIGHT, a monochrome industrial comic party game. ONE horizontal row of FOUR equally sized, evenly spaced distinct full-body characters, each centered within its own quarter of the wide canvas; generous empty gutters, feet at same baseline, each entire silhouette isolated without overlap. Left to right: (1) small masked courier with rounded white helmet, black circular eyes, messenger satchel, short black rain cape; (2) charming moth-like traveler with antennae, large pale folded wings, scarf and boots; (3) compact box-headed maintenance robot with single large circular camera eye, striped overalls and articulated arms; (4) witchlike hooded ferryman in pointed black cloak with pale skull mask and little lantern. Stylish original flat paper puppets, thick off-white cutout edge around each silhouette, fine ink hatching, stark black and white with gray shadows, bold readable shapes, whimsical 2.5D folded cardstock, frontal three-quarter standing idle pose with arms apart slightly. Four full bodies, consistent scale, transparency between and behind each character. No ground plane, no cast shadows beyond subtle paper thickness, no labels, no text, no duplicate poses, no background.",
+    "file": "public/assets/characters.png",
+    "generator": "built-in image_gen"
+  },
+  {
+    "name": "props",
+    "prompt": "Use case: stylized-concept. Asset type: transparent 4-column by 3-row game prop atlas for monochrome papercraft industrial party game. EXACTLY 12 isolated props in equal 4x3 grid cells, consistent object size, large transparent gutters, each centered within its cell, no overlap. Row 1 left to right: luminous four-point spark token, old glass lantern, toothed cogwheel, wooden cargo crate. Row 2 left to right: round surveillance drone with tiny rotors, folded black umbrella opened, old skeleton key, conical metal spike hazard. Row 3 left to right: small rectangular rooftop platform, industrial lever switch, luminous glass orb, checkered finish flag. Style intricate ink drawing, bold black silhouette and white highlights, visible off-white die-cut paper border, etched crosshatching, slightly dimensional folded paper, original 2.5D game sprites, black white gray only. No words, labels, letters or numbers. Truly transparent background behind and between all objects, no shared shadows. All props fully in their own cell. Square atlas.",
+    "file": "public/assets/props.png",
+    "generator": "built-in image_gen"
+  }
+]

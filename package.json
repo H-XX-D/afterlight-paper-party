@@ -1,0 +1,29 @@
+{
+  "name": "afterlight-paper-party",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5187",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5188",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node scripts/verify-portable.mjs",
+    "test:network": "node scripts/verify-realtime-dev.mjs",
+    "build:portable": "node scripts/build-portable.mjs",
+    "test:portable": "node scripts/verify-portable.mjs",
+    "test:performance": "node scripts/verify-performance.mjs",
+    "test:art": "node scripts/verify-paper-render.mjs"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.5",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "peer": "^1.0.2",
+    "playwright": "^1.55.0",
+    "sharp": "^0.35.5",
+    "vite": "^7.1.0"
+  }
+}

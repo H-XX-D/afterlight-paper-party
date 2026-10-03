@@ -1,0 +1,40 @@
+[
+  {
+    "id": "board-kit",
+    "generator": "built-in image_gen",
+    "promptSummary": "Original AFTERLIGHT paper-board sprite atlas on transparent background: a large floating ivory-cardstock stone island with gothic arches; a vertical rope ladder bridge with paper plank steps; a long gothic stone chute; and an arched gate with a hanging lantern on its floating base. Four isolated elements in a two-by-two layout, black ink engraving and cream paper grain, visible corrugated cut edges, restrained warm lantern light, no lettering.",
+    "promptRecord": "Verbatim generation prompt preserved below; style reference is the existing paper-platforms.webp atlas.",
+    "source": "exec-78e2a7ba-9c0d-412a-b41d-37bb48fb5d0a.png",
+    "original": "source-art/realms/board-kit.png",
+    "runtime": "public/assets/board-kit.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "quality": 92,
+      "alphaQuality": 100,
+      "effort": 6,
+      "alphaPreservedExactly": true
+    },
+    "sourceDimensions": {
+      "width": 1254,
+      "height": 1254
+    },
+    "outputDimensions": {
+      "width": 1254,
+      "height": 1254
+    },
+    "alpha": {
+      "hasAlpha": true,
+      "transparentPixels": 954257,
+      "partialPixels": 617288
+    },
+    "bytes": 397134,
+    "sha256": {
+      "original": "d7f353a803d366c9a7f09a902b5855ed27eaa67e287f842c68e59085f62891bd",
+      "runtime": "5f2b17d09a215cccf77baa3ba9d7af7462445c5cf336baa7f67470630ce87526"
+    },
+    "visualCheck": "Inspected all four separated cut-paper assets; PNG transparency verified and retained bit-for-bit in runtime WebP alpha channel.",
+    "prompt": "Create ONE production game sprite atlas of four reusable papercraft board-game components in a precisely spaced 2 by 2 grid on a genuinely TRANSPARENT background. The supplied image is STYLE REFERENCE ONLY, not an edit target. Match its intricate black ink engraving, ivory paper fibers, corrugated cardboard edges, handmade gothic architecture, warm charcoal shadow, matte layered cardboard, and restrained original fairytale style. Each quadrant is a separate isolated complete object with generous transparent margins and no contact with its neighbors. Top left: a single low round / gently octagonal stepping-stone island, viewed from 40 degrees above; broad EMPTY ivory top face for a number to be added by code, thin layered beveled paper sides, tiny dark cracks and weathered edges; nearly twice as wide as deep, no symbols or writing. Top right: one short vertical rope-and-wood ladder, shown straight from above with slight perspective, eight robust ivory wooden/paper rungs and braided charcoal rails, handmade attachments at each end, vertical long axis aligned exactly top-to-bottom, no platform behind it. Bottom left: one short straight vertical open gothic stone water chute / slide, empty deep slate trough in the middle, raised ivory carved-paper sidewalls, folded paper end lip, drawn from above at a slight angle, top-to-bottom axis, no water splashes, no background. Bottom right: one small freestanding ivory gothic archway with a warm pearl lantern hanging inside, standing on a small rocky paper plinth. Consistent illumination from upper left, consistent scale and stroke weight. Keep silhouette readable when reduced to small game pieces. NO text, NO labels, NO numbers, NO arrows, NO roads, NO colored pastel outlines, NO grid lines, NO backdrop, NO glow cloud. True transparent alpha around all four components. Square high-resolution atlas.",
+    "reference": "public/assets/paper-platforms.webp"
+  }
+]

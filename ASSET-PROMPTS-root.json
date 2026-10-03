@@ -1,0 +1,82 @@
+[
+  {
+    "id": "world",
+    "prompt": "Use case: stylized-concept. Asset type: original finished 2.5D paper game environment, landscape widescreen illustration. Blend intricate black-and-white European/Japanese ink-comic industrial architecture with gothic fairytale floating realms, charming dimensional layered cardstock and delicate crosshatching; striking hand-illustrated cut-paper edges, elaborate silhouettes, warmivorypaper, deepcharcoalshadows, tiny restrained magicalaccentonly. Beautiful detailed playable environment, strongdepth and welcomingmystery rather than photorealism. An expansive playable fantasy overworld atlas of SIX floating islands in a cloud abyss, linked by crooked rope bridges, monumental ladders, and curling stone chutes. Lower left enchanted mushroom grove, lower right lantern port andclockworkcity, middle right icycrystalspires, middleleft sunkenmooncathedral, upperleft castleclifftowers, upperright enormoussilversacredtree. Composition sixlargefocalislands at canvas normalized positions .18,.78; .78,.78; .78,.46; .18,.46; .22,.2; .77,.18. Open winding bridge-like paths between them. Several twists switchbacks and loops, an exploratorypartyboard world. NOT a numbered board, no spaces or tokens, noUI, renderinggamewilloverlaypaths. Rich original grand fantasy worldfromabove obliqueisometric miniaturepaperdiorama. No typography, labels, lettering, logos, UI, playing cards, player characters or borders. The environment itself is the asset, fillthewholeframe; preserve quietclearplayareas. Wide16:9 composition.",
+    "source": "exec-208f3ab3-b291-4dd6-80e7-edc1b60e7d5d.png",
+    "original": "source-art/realms/world.png",
+    "runtime": "public/assets/world.webp",
+    "bytes": 341096
+  },
+  {
+    "id": "inkfall",
+    "prompt": "Use case: stylized-concept. Asset type: original finished 2.5D paper game environment, landscape widescreen illustration. Blend intricate black-and-white European/Japanese ink-comic industrial architecture with gothic fairytale floating realms, charming dimensional layered cardstock and delicate crosshatching; striking hand-illustrated cut-paper edges, elaborate silhouettes, warmivorypaper, deepcharcoalshadows, tiny restrained magicalaccentonly. Beautiful detailed playable environment, strongdepth and welcomingmystery rather than photorealism. CLOCKWORK FOUNDRY. Vast gothicautomaton foundrycutfrompaper: hangingenormouscogs, massivepillars, brokenhorologicaltowers, suspendedchains at edges, whitehotmoonfurnace glowingfromdistance. The lowerthird is a wideflat ironcatwalk with gratingacrossforeground. Dynamicindustrialarchitecture overhead makes fallinggearavoidance believable, clearopenspace middleforeground. Circulargear motif. No typography, labels, lettering, logos, UI, playing cards, player characters or borders. The environment itself is the asset, fillthewholeframe; preserve quietclearplayareas. Wide16:9 composition.",
+    "source": "exec-b19cbce1-a883-4f82-bcc2-2375d32a5000.png",
+    "original": "source-art/realms/inkfall.png",
+    "runtime": "public/assets/scene-inkfall.webp",
+    "bytes": 291192
+  },
+  {
+    "id": "mothlight",
+    "prompt": "Use case: stylized-concept. Asset type: original finished 2.5D paper game environment, landscape widescreen illustration. Blend intricate black-and-white European/Japanese ink-comic industrial architecture with gothic fairytale floating realms, charming dimensional layered cardstock and delicate crosshatching; striking hand-illustrated cut-paper edges, elaborate silhouettes, warmivorypaper, deepcharcoalshadows, tiny restrained magicalaccentonly. Beautiful detailed playable environment, strongdepth and welcomingmystery rather than photorealism. WHISPERING GROVE. Enchantedmonochromegarden built onfloatingpaperisland, gigantic twistingwhite-barkedtrees formingarchingcanopy, moonlitpond, bioluminescentmushroomsatsides, fernsilhouettesforeground, windingsilverroots. Centralclearing broadopenplayableellipse forfour smalltravelers to catch lights. Subtlesilversageaccent, fullstorybookdepth, butterflywing architecturalmotif. No typography, labels, lettering, logos, UI, playing cards, player characters or borders. The environment itself is the asset, fillthewholeframe; preserve quietclearplayareas. Wide16:9 composition.",
+    "source": "exec-d9efccc5-a40a-46a1-869e-1b840292cc5d.png",
+    "original": "source-art/realms/mothlight.png",
+    "runtime": "public/assets/scene-mothlight.webp",
+    "bytes": 354232
+  },
+  {
+    "id": "sweep",
+    "prompt": "Use case: stylized-concept. Asset type: original finished 2.5D paper game environment, landscape widescreen illustration. Blend intricate black-and-white European/Japanese ink-comic industrial architecture with gothic fairytale floating realms, charming dimensional layered cardstock and delicate crosshatching; striking hand-illustrated cut-paper edges, elaborate silhouettes, warmivorypaper, deepcharcoalshadows, tiny restrained magicalaccentonly. Beautiful detailed playable environment, strongdepth and welcomingmystery rather than photorealism. PHANTOM TERMINAL. Surreal gothicrailwayterminal floating inmoonclouds. Curvedspectraltraintracks approach foreground throughvaultedarches, distant steamlocomotive with brilliant round headlight, clocksand cables, grand irontrainstation roofs. Lowerhalf broadslateplatform viewedsideon, rails sweepinghorizontallyacrossspace, cleanplayablefloor. Ivory steamformingghostlyshapes, layeredpapercut metalarchitecture. No typography, labels, lettering, logos, UI, playing cards, player characters or borders. The environment itself is the asset, fillthewholeframe; preserve quietclearplayareas. Wide16:9 composition.",
+    "source": "exec-e9a85768-cfec-44ba-936a-cd50b20db7af.png",
+    "original": "source-art/realms/sweep.png",
+    "runtime": "public/assets/scene-sweep.webp",
+    "bytes": 294086
+  },
+  {
+    "id": "rhythm",
+    "prompt": "Use case: stylized-concept. Asset type: original finished 2.5D paper game environment, landscape widescreen illustration. Blend intricate black-and-white European/Japanese ink-comic industrial architecture with gothic fairytale floating realms, charming dimensional layered cardstock and delicate crosshatching; striking hand-illustrated cut-paper edges, elaborate silhouettes, warmivorypaper, deepcharcoalshadows, tiny restrained magicalaccentonly. Beautiful detailed playable environment, strongdepth and welcomingmystery rather than photorealism. MUSHROOM ORGAN. A magicalmusiccavern inside gigantic glowingmushroom, grandcathedral pipeorgan growingout ofrootspores, elaborateebonymusicmachinery, curvedbrass-likeblackpipes, carvedpaperarches, floatingmusicstoneformations. Four elegantlyseparated horizontal ledgesacross lowerhalf forrhythmplay, spaciousmiddleground withdark backdrop toread movingnotes. Softlilacluminescentaccent, theatricalstage lighting. No typography, labels, lettering, logos, UI, playing cards, player characters or borders. The environment itself is the asset, fillthewholeframe; preserve quietclearplayareas. Wide16:9 composition.",
+    "source": "exec-c52f31a2-7536-4d9a-baf6-01f55b56f148.png",
+    "original": "source-art/realms/rhythm.png",
+    "runtime": "public/assets/scene-rhythm.webp",
+    "bytes": 291290
+  },
+  {
+    "id": "crates",
+    "prompt": "Use case: stylized-concept. Original game artwork for AFTERLIGHT, a gothic paper cutout party game. A reliquary warehouse in a gothic floating castle, elaborate shelves of locked ivory caskets, pulleys, rolling ladders and illuminated keyholes. Clear horizontal stone-paper floor in foreground. Detailed ink engraving on layered ivory paper, dimensional paper diorama, black and white gothic fantasy with small muted jade or violet lights, surreal floating architecture, elegant tactile cut edges, cinematic atmospheric depth. Wide 16:9 composition. No characters, no UI, no words or logos. Readable composition for foreground animated gameplay, richly detailed scenery at the edges.",
+    "source": "exec-b92cfaa1-95a3-4369-a22c-71c3a8dac3d9.png",
+    "original": "source-art/realms/crates.png",
+    "runtime": "public/assets/scene-crates.webp",
+    "bytes": 264072
+  },
+  {
+    "id": "orbit",
+    "prompt": "Use case: stylized-concept. Original game artwork for AFTERLIGHT, a gothic paper cutout party game. A crescent moon garden with concentric orbital paths, suspended planet lanterns, wrought paper vines and a deep starry void. Clear central circular arena. Detailed ink engraving on layered ivory paper, dimensional paper diorama, black and white gothic fantasy with small muted jade or violet lights, surreal floating architecture, elegant tactile cut edges, cinematic atmospheric depth. Wide 16:9 composition. No characters, no UI, no words or logos. Readable composition for foreground animated gameplay, richly detailed scenery at the edges.",
+    "source": "exec-3147b039-47b1-4a27-99db-45b6f709e340.png",
+    "original": "source-art/realms/orbit.png",
+    "runtime": "public/assets/scene-orbit.webp",
+    "bytes": 263814
+  },
+  {
+    "id": "cipher",
+    "prompt": "Use case: stylized-concept. Original game artwork for AFTERLIGHT, a gothic paper cutout party game. An enormous astronomical clock lock in a clockwork cathedral, concentric rings of abstract symbols and gears, four small desks beneath. No readable letters. Detailed ink engraving on layered ivory paper, dimensional paper diorama, black and white gothic fantasy with small muted jade or violet lights, surreal floating architecture, elegant tactile cut edges, cinematic atmospheric depth. Wide 16:9 composition. No characters, no UI, no words or logos. Readable composition for foreground animated gameplay, richly detailed scenery at the edges.",
+    "source": "exec-f021c8a5-e4c8-40bf-9d2f-11068b403366.png",
+    "original": "source-art/realms/cipher.png",
+    "runtime": "public/assets/scene-cipher.webp",
+    "bytes": 219950
+  },
+  {
+    "id": "shadow",
+    "prompt": "Use case: stylized-concept. Original game artwork for AFTERLIGHT, a gothic paper cutout party game. A haunted royal courtyard of moonlit gothic arches, ornate hedges, long dramatic crossing shadows and paper gargoyles. Wide clear foreground for a hide-and-seek game. Detailed ink engraving on layered ivory paper, dimensional paper diorama, black and white gothic fantasy with small muted jade or violet lights, surreal floating architecture, elegant tactile cut edges, cinematic atmospheric depth. Wide 16:9 composition. No characters, no UI, no words or logos. Readable composition for foreground animated gameplay, richly detailed scenery at the edges.",
+    "source": "exec-a7b80712-6a57-41d2-aed1-37cce5d3e723.png",
+    "original": "source-art/realms/shadow.png",
+    "runtime": "public/assets/scene-shadow.webp",
+    "bytes": 198240
+  },
+  {
+    "id": "cards",
+    "prompt": "Use case: stylized-concept. Original game artwork for AFTERLIGHT, a gothic paper cutout party game. A single ornate fantasy playing card BACK design, portrait card filling most of landscape image with wide ornamental paper border. A pale moth surrounding a glowing eternal tree in concentric gothic filigree. No suits, numbers, words or text; black and ivory with restrained silver and violet detail. Detailed ink engraving on layered ivory paper, dimensional paper diorama, black and white gothic fantasy with small muted jade or violet lights, surreal floating architecture, elegant tactile cut edges, cinematic atmospheric depth. Wide 16:9 composition. No characters, no UI, no words or logos. Readable composition for foreground animated gameplay, richly detailed scenery at the edges.",
+    "source": "exec-3f77d70a-6a82-4759-8004-0eca26a54d3e.png",
+    "original": "source-art/realms/cards.png",
+    "runtime": "public/assets/cards.webp",
+    "bytes": 336026
+  }
+]

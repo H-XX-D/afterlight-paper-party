@@ -1,0 +1,141 @@
+{
+  "tool": "Built-in image_gen",
+  "purpose": "Nine original gothic cut-paper game environments",
+  "assets": [
+    {
+      "id": "rift-rumble",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE FRACTURED RIFT. A colossal pale eclipsed moon split by a hairline violet rift hovers above a shattered gothic arena suspended in a bottomless cloud sea. The composition features broken pointed cathedral arches at the far left and right, jagged dangling black-paper island roots and suspended chains, multiple distant fragments drifting like cut paper. Keep the central foreground airy mist and negative space for a brawl, with a broad shattered stone landing suggested low in the image and two remote balconies. Violet seam light touches torn ivory surfaces. Absolutely unique dramatic silhouette and meticulous tiny architectural details.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/rift-rumble.png",
+      "runtime": "public/assets/scene-rift-rumble.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "7b1a39967529cac8780c53f107e124f2cdd22b572d673d3ca49ee5a1cd5de1f1",
+      "bytes": 191986
+    },
+    {
+      "id": "crown-clash",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE THORN THRONE. An abandoned royal court floats inside the ribcage of a ruined gothic palace. Sweeping ivory antler-like buttresses cradle a small ornate luminous tarnished-gold crown shrine high near the back center, with black thorn vines and folded-paper velvet curtains framing both sides. A crescent moon shines through a shattered rose-window canopy. Empty wide stone court in the middle and lower-middle leaves clear space for action. Broken heraldic shields have abstract shapes without letters. Layered bone-white roses, violet haze, and scattered delicate gold-leaf fragments distinguish this royal arena.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/crown-clash.png",
+      "runtime": "public/assets/scene-crown-clash.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "fbe83cbbdcdc755a1441d9aea870e45cff129a980acfb7705792961c4f2f9dc7",
+      "bytes": 247106
+    },
+    {
+      "id": "meteor-melee",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE CELESTIAL FORGE. A black-paper volcanic sky forge under a dying cratered moon, colossal skeletal astronomical gears on the far sides and a distant anvil-shaped floating island etched with restrained ember seams. Several tiny ivory meteors arc diagonally through the upper distant sky, their engraved trails reflecting amber light into violet smoke. The middle is a clear misty gap reserved for gameplay; ruined balconies frame the sides with heavy chains descending into clouds. Make the architecture celestial and industrial, with dramatic rich etched star-metal detail and paper-cut strata, no characters.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/meteor-melee.png",
+      "runtime": "public/assets/scene-meteor-melee.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "1fde7a998a70b97bbea83929f379722b5763440e47879772af94f39e08be93fe",
+      "bytes": 197916
+    },
+    {
+      "id": "spire-kings",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE CATHEDRAL SUMMIT. Above an infinite white cloud ocean, ivory and black gothic needle-towers rise to extraordinary heights. The viewer stands level with the tips of the spires; a brilliant slender cathedral with a jade-glass oculus hovers far in the upper center, silver pennants and suspended bridges stretching toward it from tall towers at the sides. A regal circular sun-halo behind the highest tower forms a focal point. Sharp layered paper roofs, delicately cut flying buttresses, gargoyle-shaped abstract ornaments without creatures. Leave the lower-middle and mid-center clear airy mist for platforms to be drawn in front. Epic scale, nocturnal bone white light, subtle jade highlights, mostly monochrome.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/spire-kings.png",
+      "runtime": "public/assets/scene-spire-kings.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "71a896826e711afb26ccc276bc213f3f7131d40c2703304954ccfd5b7ec4a0b7",
+      "bytes": 188934
+    },
+    {
+      "id": "balance",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE WIND SPIRE TIGHTROPE. A breathless high-altitude gorge between two crooked gothic bell spires, with a single taut thin rope stretching horizontally across the entire lower-middle view between the extreme left and extreme right towers. The center is open layered white clouds and distant jagged mountains; arching winds are shown as fine engraved ivory ribbons circling far-off floating monastery rocks. Paper prayer streamers without writing and tiny silver wind chimes flutter at the far sides. A sliver moon overhead, desaturated jade lanterns far away, deep ink black border silhouettes. A wide calm central balance-game area; no figures on the rope.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/balance.png",
+      "runtime": "public/assets/scene-balance.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "70456f481fcb758fe6741960e6c489877ac6f3e3ba033fe4c8ee3129171ead7f",
+      "bytes": 179368
+    },
+    {
+      "id": "sorting",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE HAUNTED POST OFFICE. An enormous abandoned gothic mail-sorting hall, symmetrical but eccentric, cabinets with hundreds of tiny warm-ivory drawers climbing the far walls, spiraling pneumatic brass mail tubes and paper pigeonhole cubbies; a clockwork sorting wheel is tucked high into the upper far-left. Light comes from a crescent-shaped stained glass clerestory and jade-green desk lamps. Detailed stacks of sealed envelopes, folded paper parcels, and wax seals sit only at extreme edges. Keep a large clear central dark workbench and lower-middle floor for the game action, with tiny faint envelope silhouettes in distant air. Everything is carved layered cardstock, ornate black and bone-white, slight violet haze, without any legible labels or writing.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/sorting.png",
+      "runtime": "public/assets/scene-sorting.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "82715ce28210f3f754351a5cd9dbd348e87f62e8a6e5a4913234530c14672788",
+      "bytes": 192194
+    },
+    {
+      "id": "reaction",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE BELL CHAPEL OF FALSE DAWN. The ruined nave of a gothic chapel made from delicately layered ivory cardstock, a magnificent suspended black iron bell at the top-center framed by a broken rose window whose panes glow faintly jade and violet. Narrow luminous dawn rays slant through the upper distant arches. A silent shallow pool reflects the bell, with stone lily-shaped candle holders and tiny wax candles only along the far edges. The broad central nave and lower-middle floor are almost empty, dark and readable as a reaction-game stage. The bell and its arch are immediately recognizable. Tiny metallic gold details, stark light and shadow, dreamlike lunar atmosphere, no crucifixes, no figures, no text.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/reaction.png",
+      "runtime": "public/assets/scene-reaction.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "589ba86d94e71b011b5246f47d8274b980baded9175c37e36a653fddba33825c",
+      "bytes": 174528
+    },
+    {
+      "id": "trace",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE STAR CARTOGRAPHER. A gothic astronomical map room drifting through the void; a monumental circular black-and-ivory celestial planisphere rises across the rear wall, illuminated fine silver constellation lines and geometric unlabeled orbit markings. Floating paper astrolabes, antique compasses, rolled blank maps, and a carved telescope frame the extreme left and right edges. A crescent-shaped opening in the ceiling reveals a sparse violet starfield. Lower center is a wide calm charcoal tabletop map with only extremely faint engraved grain and a few very small distant pinprick stars, ready for bright interactive stars to appear over it. Deep layered etched paper, restrained jade glass instrument lenses, precision craftsmanship, all star symbols abstract; no numbers, letters, words, people, or UI.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/trace.png",
+      "runtime": "public/assets/scene-trace.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "0a76271e1538387a5a8572e8f40676812094d1d2b4f5e40f677714f55b18cf06",
+      "bytes": 186074
+    },
+    {
+      "id": "potato",
+      "prompt": "Use case: stylized-concept. Asset type: one polished 16:9 landscape background illustration for an original paper-cutout party videogame, 1536x864 or wider 16:9 composition. Style: intricate gothic storybook diorama sculpted from layered ink-black and warm ivory cardstock, delicate etched edges, shadow-box depth, charcoal crosshatching, moonlit mist, ornate floating island architecture, high-end handmade miniature photography combined with engraved illustration. Palette: black, bone white, restrained desaturated jade and violet glows, small tarnished-gold accents. Composition: side-on stage, visually calm clear central playing space spanning middle 65 percent; scenic architecture and detail frame the top and far sides and recede into depth; foreground lower edge atmospheric. Rich original environmental storytelling, no characters, no people, no animals, no UI, no words, no letters, no logos, no watermark. This is a full game environment, not a concept sheet or grid. Scene: THE CURSED MIDNIGHT BANQUET. A fantastical abandoned gothic banquet hall with an impossibly long ornate carved black table reaching left to right across the lower third, its center left clean. At the far edges, ivory paper porcelain plates, ornate empty chairs, thin candle trees, covered serving cloches, black roses, and silver goblets lean at eccentric angles. High overhead hangs a chandelier like a folded skeletal paper flower. A tall pointed window at the rear reveals violet moonlight and distant floating castle islands. One small sealed black invitation with a restrained golden wax seal rests near the table’s rear center, small and atmospheric. Playful uncanny storybook mood, warm ivory lights, rich tactile paper detailing, clear open middle for four animated travelers, no people, no text or letters.",
+      "tool": "built-in image_gen",
+      "original": "source-art/realms/potato.png",
+      "runtime": "public/assets/scene-potato.webp",
+      "encoding": {
+        "width": 1440,
+        "height": 810,
+        "quality": 82,
+        "format": "webp"
+      },
+      "sha256": "f5924d632016a7eeb8517ee058dba251bf2e0ad8b35806be8a0a0eaf0ee08f57",
+      "bytes": 188408
+    }
+  ]
+}

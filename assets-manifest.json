@@ -1,0 +1,279 @@
+{
+  "version": 2,
+  "images": [
+    {
+      "name": "city",
+      "file": "city.png",
+      "mime": "image/png",
+      "role": "original-background"
+    },
+    {
+      "name": "characters",
+      "file": "characters.png",
+      "mime": "image/png",
+      "role": "sprite-atlas"
+    },
+    {
+      "name": "props",
+      "file": "props.png",
+      "mime": "image/png",
+      "role": "sprite-atlas"
+    },
+    {
+      "name": "world",
+      "file": "world.webp",
+      "mime": "image/webp",
+      "role": "board-world"
+    },
+    {
+      "name": "cards",
+      "file": "cards.webp",
+      "mime": "image/webp",
+      "role": "card-art"
+    },
+    {
+      "name": "scene-inkfall",
+      "file": "scene-inkfall.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "inkfall"
+    },
+    {
+      "name": "scene-mothlight",
+      "file": "scene-mothlight.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "mothlight"
+    },
+    {
+      "name": "scene-sweep",
+      "file": "scene-sweep.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "sweep"
+    },
+    {
+      "name": "scene-rhythm",
+      "file": "scene-rhythm.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "rhythm"
+    },
+    {
+      "name": "scene-maze",
+      "file": "scene-maze.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "maze"
+    },
+    {
+      "name": "scene-bell-breakers",
+      "file": "scene-memory.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "bell-breakers",
+      "originalScene": "memory"
+    },
+    {
+      "name": "scene-redlight",
+      "file": "scene-redlight.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "redlight"
+    },
+    {
+      "name": "scene-relic-launch",
+      "file": "scene-tug.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "relic-launch",
+      "originalScene": "tug"
+    },
+    {
+      "name": "scene-raft",
+      "file": "scene-raft.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "raft"
+    },
+    {
+      "name": "scene-gallery",
+      "file": "scene-gallery.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "gallery"
+    },
+    {
+      "name": "scene-hollow-horde",
+      "file": "scene-fishing.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "hollow-horde",
+      "originalScene": "fishing"
+    },
+    {
+      "name": "scene-rift-ball",
+      "file": "scene-balance.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "rift-ball",
+      "originalScene": "balance"
+    },
+    {
+      "name": "scene-spark-heist",
+      "file": "scene-sorting.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "spark-heist",
+      "originalScene": "sorting"
+    },
+    {
+      "name": "scene-fuse-festival",
+      "file": "scene-reaction.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "fuse-festival",
+      "originalScene": "reaction"
+    },
+    {
+      "name": "scene-trace",
+      "file": "scene-trace.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "trace"
+    },
+    {
+      "name": "scene-gullet-gala",
+      "file": "scene-potato.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "gullet-gala",
+      "originalScene": "potato"
+    },
+    {
+      "name": "scene-tower-relay",
+      "file": "scene-crates.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "tower-relay",
+      "originalScene": "crates"
+    },
+    {
+      "name": "scene-bellows-boxing",
+      "file": "scene-orbit.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "bellows-boxing",
+      "originalScene": "orbit"
+    },
+    {
+      "name": "scene-colossus-wake",
+      "file": "scene-cipher.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "colossus-wake",
+      "originalScene": "cipher"
+    },
+    {
+      "name": "scene-shadow",
+      "file": "scene-shadow.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "shadow"
+    },
+    {
+      "name": "scene-rift-rumble",
+      "file": "scene-rift-rumble.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "rift-rumble"
+    },
+    {
+      "name": "scene-crown-clash",
+      "file": "scene-crown-clash.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "crown-clash"
+    },
+    {
+      "name": "scene-meteor-melee",
+      "file": "scene-meteor-melee.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "meteor-melee"
+    },
+    {
+      "name": "scene-spire-kings",
+      "file": "scene-spire-kings.webp",
+      "mime": "image/webp",
+      "role": "minigame-environment",
+      "minigame": "spire-kings"
+    },
+    {
+      "name": "paper-platforms",
+      "file": "paper-platforms.webp",
+      "mime": "image/webp",
+      "role": "paper-sprite-atlas"
+    },
+    {
+      "name": "paper-objects",
+      "file": "paper-objects.webp",
+      "mime": "image/webp",
+      "role": "paper-sprite-atlas"
+    },
+    {
+      "name": "pixel-fx",
+      "file": "pixel-fx.webp",
+      "mime": "image/webp",
+      "role": "paper-sprite-atlas"
+    },
+    {
+      "name": "board-kit",
+      "file": "board-kit.webp",
+      "mime": "image/webp",
+      "role": "paper-board-atlas"
+    },
+    {
+      "name": "characters-new",
+      "file": "characters-new.webp",
+      "mime": "image/webp",
+      "role": "paper-expansion-atlas"
+    },
+    {
+      "name": "objectives",
+      "file": "objectives.webp",
+      "mime": "image/webp",
+      "role": "paper-expansion-atlas"
+    },
+    {
+      "name": "hud-frame",
+      "file": "hud-frame.webp",
+      "mime": "image/webp",
+      "role": "paper-expansion-atlas"
+    },
+    {
+      "name": "character-attacks",
+      "file": "character-attacks.webp",
+      "mime": "image/webp",
+      "role": "animated-paper-sprite-atlas"
+    },
+    {
+      "name": "feast-mouths",
+      "file": "feast-mouths.webp",
+      "mime": "image/webp",
+      "role": "animated-paper-sprite-atlas"
+    },
+    {
+      "name": "motion-classic",
+      "file": "motion-classic.webp",
+      "mime": "image/webp",
+      "role": "paper-inbetween-animation-atlas"
+    },
+    {
+      "name": "motion-new",
+      "file": "motion-new.webp",
+      "mime": "image/webp",
+      "role": "paper-inbetween-animation-atlas"
+    }
+  ]
+}

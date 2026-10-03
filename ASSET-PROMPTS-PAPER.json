@@ -1,0 +1,23 @@
+[
+  {
+    "id": "paper-platforms",
+    "prompt": "Use case: stylized-concept. Original cohesive artwork for AFTERLIGHT papercraft party game. A production sprite atlas on transparent background, exactly 1 column by 4 equal-height rows, FOUR separate wide horizontal papercraft platform ledges. Each row centered within its quarter and clear transparent gap around it. Row1: large flat-topped ivory folded-cardboard stone bridge with embossed gothic arches and dangling paper rock underside. Row2: smaller floating balcony made of black ink engraved ivory cardstock with exposed layered paper edges and small root scrolls. Row3: shrine ledge with engraved moon altar pattern and paper vines. Row4: wooden rope bridge plank section, beautifully cut cream paper with black ink lines and visible cardboard thickness. Side view with slightly visible top surface, horizontal flat walkable top edge at 15% of each cell height. Thick black outline, tactile visible corrugated paper edge, SAME hand-built monochrome paper diorama style in every row. No backgrounds, no text, no glow, no smooth dark polygons. Wide 1536x1024 sheet.",
+    "source": "exec-538fef3f-6e72-4855-a5a1-715d05b0a6de.png",
+    "original": "source-art/realms/paper-platforms.png",
+    "runtime": "public/assets/paper-platforms.webp"
+  },
+  {
+    "id": "paper-objects",
+    "prompt": "Use case: stylized-concept. Original cohesive artwork for AFTERLIGHT papercraft party game. Production papercraft game prop sprite atlas, exactly 3 columns and 3 rows equal cells on genuinely transparent background. Nine isolated objects, each centered, generous clear padding in each cell. Row1: ornate analog clock gauge with blank ivory face and no hands; sagging wooden rope bridge viewed side on; gothic low ritual altar table. Row2: five-point folded-paper star; arched gothic paper door portal; chunky round stone pedestal made of paper. Row3: torn parchment ornamental rectangular sign blank for text; little engraved treasure crate; a spiky elegant folded-paper crown. Every object SAME style: black ink engravings, ivory cream textured cardstock, bold black outlines, visible layered cut paper edges, slightly isometric dimensional perspective, grayscale mostly with VERY tiny muted sage accent. Not realistic stone, obviously handcrafted folded paper miniature. No words, no labels, no UI. Square 1536x1536.",
+    "source": "exec-2a7e8b5a-46f2-46f3-a75b-e2e2e4e661a0.png",
+    "original": "source-art/realms/paper-objects.png",
+    "runtime": "public/assets/paper-objects.webp"
+  },
+  {
+    "id": "pixel-fx",
+    "prompt": "Use case: stylized-concept. Original cohesive artwork for AFTERLIGHT papercraft party game. A transparent production PIXEL ART effect animation spritesheet, exact 4 columns and 4 rows equal cells. Row1 four successive animation frames of an ivory starburst hit impact expanding then fading; Row2 four frames of a cream dust puff cloud expanding then breaking into square paper pixels; Row3 four frames of muted sage and ivory magical sparks spiraling outward; Row4 four frames of a pale violet shield shatter bursting into square pixels. Every frame isolated centered in its exact cell with clear transparent padding. Restrained black ink, ivory cream, sage, dusty violet palette. Deliberately chunky crisp square pixel edges, 32x32 pixel-style sprites upscaled nearest-neighbor, no vector lines, no smooth gradients, no words, no labels, no glow background. Square 1024x1024. This will be rendered as animated sprite frames over a black and ivory papercraft game.",
+    "source": "exec-dbb4e97a-9a1f-4a32-85b2-d83eefcaa71c.png",
+    "original": "source-art/realms/pixel-fx.png",
+    "runtime": "public/assets/pixel-fx.webp"
+  }
+]

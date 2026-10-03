@@ -1,0 +1,170 @@
+[
+  {
+    "id": "maze",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: a vast impossible Gothic labyrinth library suspended above fog. Towering bookshelves become castle walls around an open pale stone courtyard; narrow stairways curl through pointed arches; stacked paper books form overhanging balconies; a distant moon shines through an immense broken rose window. The maze-like shelving and architectural corridors surround a clean broad central floor, deep ink at corners and luminous cream center. Include small hanging keys and drifting loose blank pages only as atmospheric peripheral details. Side-on elevated three-quarter theatrical stage perspective.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-81f1df1d-8220-4a3e-8bfb-a4e68724680f.png",
+    "source": "source-art/realms/maze.png",
+    "file": "public/assets/scene-maze.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 239760
+  },
+  {
+    "id": "memory",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: a crystal echo archive inside a silent pointed-vault cathedral. Translucent paper-cut crystal organ pipes and faceted mineral shelves rise symmetrically along the sides. Delicate suspension wires hold irregular quartz prisms high overhead, catching faint violet light. Concentric ink linework in the broad empty central marble floor suggests echoes without literal glyphs or UI. Behind it an immense dark oval vault contains layers of pale branching crystals, airy fog, tiny specks of light. Quiet, mysterious, highly detailed etched architectural craftsmanship.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-ecd2a10e-1a0d-4054-af99-e8af3b9ed849.png",
+    "source": "source-art/realms/memory.png",
+    "file": "public/assets/scene-memory.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 219604
+  },
+  {
+    "id": "redlight",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: a gargoyle sentry bridge crossing the mist between two floating Gothic castles. View down a wide empty causeway in deep perspective to a colossal stone gargoyle statue embedded in a distant gatehouse, not a living character. Ink-black winged buttresses and weathered lanterns flank the bridge. Pale moonlit balustrades, broken towers and trailing roots disappear into clouds. A single subtle jade lamp glows above the far portal. Central bridge is broad and clear, with ornate detail concentrated on the side railings and skyline. Ominous and majestic.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-8866e2af-4f66-4847-8fb3-a7775c6e7fd5.png",
+    "source": "source-art/realms/redlight.png",
+    "file": "public/assets/scene-redlight.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 269790
+  },
+  {
+    "id": "tug",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: an impossible eclipse hoist suspended between two tall clockwork towers. An enormous cream paper sun disc with ink-etched corona hangs high in the center from delicate cables, with a slim black crescent moon crossing its edge. Antique pulleys, toothed wheels, winches and taut twisted ropes climb the side towers; their bases form narrow floating islands. Keep a spacious broad dark paper stage across the lower third and an uncluttered central sky below the hanging sun for a tug-of-war game. Exquisite tiny mechanical detail, monochrome light with a barely perceptible violet rim.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-3c70bd44-933f-4b39-be37-1e476b64094e.png",
+    "source": "source-art/realms/tug.png",
+    "file": "public/assets/scene-tug.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 239636
+  },
+  {
+    "id": "raft",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: the Shattered Isles, five broad flat-topped fragments of floating stone in the lower third separated by dark cloud gaps, with ornate ruined arches and hanging roots at their outer edges. Above them distant gothic island citadels, torn suspension bridges, waterfalls dissolving into fog, and luminous cloud strata surround an open airy center. The fragments should feel like a layered papercraft theater set, cracked cream stone tops over black engraved cliff undersides. Ethereal faint jade mist, original silhouettes, readable broad platforms, no markings, no people.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-c44ac206-0f5c-4c60-a753-de4c4e6de72e.png",
+    "source": "source-art/realms/raft.png",
+    "file": "public/assets/scene-raft.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 165714
+  },
+  {
+    "id": "gallery",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: an astronomical ink observatory opening onto a deep moonlit sky. A grand semicircular brass-and-paper armillary mechanism and enormous crescent telescope frame the upper sides; elegant Gothic balustrades and instrument cabinets frame a broad clear lower stage. Tiny distant suspended celestial globes and old aerial observatory pods float against the open star field, kept mainly high and peripheral so the central sky is clear. Cream parchment constellation chart textures WITHOUT lettering or zodiac glyphs, engraved black metal, minute violet reflections, fine cutout edges. Cinematic theater perspective.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-1e3648a2-918d-4016-a30e-190f1e127e42.png",
+    "source": "source-art/realms/gallery.png",
+    "file": "public/assets/scene-gallery.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 265312
+  },
+  {
+    "id": "fishing",
+    "prompt": "Use case: stylized-concept. Asset type: finished wide 16:9 game environment illustration for original paper-cutout party game AFTERLIGHT. Render an intricately etched gothic fantasy diorama made of layered black ink and warm cream cardstock, visible bevel-thin paper edges, dramatic shadow silhouettes, delicate crosshatching, atmospheric depth, floating architecture, polished editorial-quality game art. Almost monochrome with extremely restrained desaturated jade and violet glows. Landscape 16:9 framing. Keep the middle and lower middle relatively open and uncluttered for playable characters and game indicators; detail should frame rather than block gameplay. No people, no characters, no text, no words, no lettering, no symbols resembling UI, no logos, no watermarks. Unique scene: a sunken cathedral canal in a moonlit submerged Gothic realm. Wide ink-dark still water fills the central and lower composition with gentle cream engraved ripple lines. A broad weathered empty fishing quay lies across the bottom edge; partially drowned bell towers and pointed arch cloisters flank both sides; ghostly roofs and submerged stone stairs appear beneath the transparent jade-gray water near the edges. Great hanging bronze bells, trailing reeds and floating paper petals enrich the margins. A distant pale moon lights layered mist behind the cathedral. Quiet, contemplative, crisp etched papercraft.",
+    "generator": "built-in image_gen",
+    "generatedPath": "exec-36dbec4c-fe4b-4373-85a2-0305a7029f89.png",
+    "source": "source-art/realms/fishing.png",
+    "file": "public/assets/scene-fishing.webp",
+    "status": "saved",
+    "compression": {
+      "format": "webp",
+      "width": 1440,
+      "quality": 82
+    },
+    "visualCheck": "Distinct gothic paper-cutout setting with open gameplay composition; generated output inspected.",
+    "sourceDimensions": {
+      "width": 1672,
+      "height": 941
+    },
+    "outputDimensions": {
+      "width": 1440,
+      "height": 810
+    },
+    "bytes": 272818
+  }
+]

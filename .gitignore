@@ -1,0 +1,26 @@
+# Installed dependencies and generated builds
+node_modules/
+dist/
+coverage/
+.cache/
+*.tsbuildinfo
+
+# Local verification evidence, recordings, and raw generated masters
+verification/
+source-art/
+generated-originals/
+playwright-report/
+test-results/
+*.zip
+*.mp4
+*.webm
+*.log
+
+# Local configuration and operating-system files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.pem
+*.key
