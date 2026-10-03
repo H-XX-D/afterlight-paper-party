@@ -1,3 +1,5 @@
+import {bakePaperBoard,paperBoardStats} from './paper-board.js';
+export {paperBoardStats};
 import {boardCamera,sampleBoardTraveler,sampleBoardEncounter} from './board-camera.js';
 /** Host-owned card party. All authority, cards and randomness stay on the host. */
 export const CARD_COLORS = Object.freeze(['ivory', 'jade', 'violet', 'ember']);
@@ -669,31 +671,32 @@ function drawPaperTransport(ctx,helpers,from,to,kind){
 }
 let paperBoardLayer=null;
 function paintBoardFoundation(ctx,helpers){
+ const originalPiece=helpers.boardPiece,commands=[];
+ const modelHelpers=originalPiece?{...helpers,boardPiece:(c,type,x,y,w,h,options={})=>commands.push({type,x,y,w,h,options})}:helpers;
  // Distant scenery recedes softly behind the handmade routes, retaining the
  // floating-world illustration without letting every background line compete.
  const shade=ctx.createRadialGradient(480,278,110,480,278,530);
  shade.addColorStop(0,'#121614b5');shade.addColorStop(.72,'#171b198e');shade.addColorStop(1,'#10141328');ctx.fillStyle=shade;ctx.fillRect(0,0,960,540);
- for(let i=0;i<48;i++)drawPaperPath(ctx,helpers,i,(i+1)%48);
- for(const [a,b]of Object.entries(BOARD_SHORTCUTS))drawPaperPath(ctx,helpers,+a,b,'shortcut');
- for(const [a,b]of Object.entries(BOARD_CHUTES))drawPaperTransport(ctx,helpers,+a,b,'chute');
- for(const [a,b]of Object.entries(BOARD_LADDERS))drawPaperTransport(ctx,helpers,+a,b,'ladder');
+ for(let i=0;i<48;i++)drawPaperPath(ctx,modelHelpers,i,(i+1)%48);
+ for(const [a,b]of Object.entries(BOARD_SHORTCUTS))drawPaperPath(ctx,modelHelpers,+a,b,'shortcut');
+ for(const [a,b]of Object.entries(BOARD_CHUTES))drawPaperTransport(ctx,modelHelpers,+a,b,'chute');
+ for(const [a,b]of Object.entries(BOARD_LADDERS))drawPaperTransport(ctx,modelHelpers,+a,b,'ladder');
  // A small physical landmark leaves the center open and ties the route to the
  // same gothic paper architecture as the surrounding realms.
- helpers.boardPiece?.(ctx,'gate',480,319,54,71);
+ modelHelpers.boardPiece?.(ctx,'gate',480,319,54,71);
+ for(let i=0;i<48;i++){const p=BOARD_SPACES[i],special=p.type!=='spark';smallStone(ctx,modelHelpers,p.x,p.y,special?48:42,special?32:28,(i%3-1)*.028);if(commands.length){commands[commands.length-1].realm=p.realm;commands[commands.length-1].stop=true;}}
+ const start=BOARD_SPACES[0];modelHelpers.boardPiece?.(ctx,'gate',start.x-38,start.y+4,29,38);
+ if(originalPiece){const solidLayer=bakePaperBoard(commands,originalPiece);if(solidLayer)ctx.drawImage(solidLayer,0,0,960,540);else for(const c of commands)originalPiece(ctx,c.type,c.x,c.y,c.w,c.h,c.options);}
  const colors={ladder:'#98b6a4',chute:'#b0a0c0',fork:'#c5ae77',item:'#c5ae77',shrine:'#d5c8a6',event:'#b7beaf'};
  const symbols={ladder:'↑',chute:'↓',fork:'⑂',item:'◇',shrine:'✦',event:'?'};
  for(let i=0;i<48;i++){
-  const p=BOARD_SPACES[i],special=p.type!=='spark',width=special?48:42;
+  const p=BOARD_SPACES[i],special=p.type!=='spark';
   // Each numbered stop is a layered island with a blank engraved top face.
-  smallStone(ctx,helpers,p.x,p.y,width,special?32:28,(i%3-1)*.028);
+  // Printed numbers remain crisp above the physically modelled paper islands.
   ctx.save();ctx.translate(p.x,p.y);ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`bold ${special?12:11}px Georgia,serif`;ctx.fillStyle='#252a20';ctx.fillText(String(i+1),0,0);
   if(special){ctx.fillStyle=colors[p.type]||'#c6baa0';ctx.strokeStyle='#272f27';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(-6,-12);ctx.lineTo(0,-19);ctx.lineTo(6,-12);ctx.lineTo(0,-7);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#20271f';ctx.font='bold 9px Georgia';ctx.fillText(symbols[p.type],0,-12);}
   ctx.restore();
  }
- // The paired gates make the looping exit explicit without another crossing
- // ribbon or a large label on the route itself.
- const start=BOARD_SPACES[0];helpers.boardPiece?.(ctx,'gate',start.x-38,start.y+4,29,38);
- 
 }
 function boardCue(state,name){
  const cue=state[name];if(!cue)return null;const age=Math.max(0,(state.clock||0)-cue.startedAt),duration=cue.duration||3;

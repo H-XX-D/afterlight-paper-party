@@ -3,8 +3,8 @@
  * 960 × 540 canvas; z and radius use the same scene-pixel scale. No retained
  * history, wall clock, randomness or writes to the authoritative game state.
  */
+import {paperPalette} from './paper-palette.js';
 const TAU=Math.PI*2;
-const IVORY='#e8e1cb', COOL='#b8c7cf', BRONZE='#bfa276', ASH='#cbc4b8', ROSE='#c8a496';
 const finite=(n,fallback=0)=>Number.isFinite(n)?n:fallback;
 const clamp=(n,lo=0,hi=1)=>Math.max(lo,Math.min(hi,finite(n)));
 const slot=(p,i=0)=>Math.max(0,Math.floor(finite(p.slot,i)));
@@ -43,15 +43,16 @@ export const LIGHTING_AUDIT=Object.freeze([
 
 export function sceneLighting(game={}){
  const t=finite(game.time),players=Array.isArray(game.players)?game.players:[],s=game.state||{};
- const profile={ambient:{color:ASH,intensity:.54},key:{x:272,y:75,z:235,color:IVORY,intensity:.92},fill:{x:805,y:350,z:120,color:COOL,intensity:.28},points:[],effects:[]};
+ const palette=paperPalette(game),IVORY=palette.key,COOL=palette.fill,BRONZE=palette.metal,ROSE=palette.fx.hit;
+ const profile={palette,ambient:{color:palette.ambient,intensity:.54},key:{x:272,y:75,z:235,color:IVORY,intensity:.92},fill:{x:805,y:350,z:120,color:COOL,intensity:.28},points:[],effects:[]};
  const candidates=[];
  const point=(x,y,intensity,radius=125,color=IVORY,z=62)=>{
   const strength=clamp(intensity,0,2.4);if(strength<.015)return;
   candidates.push({x:clamp(x,-96,1056),y:clamp(y,-60,600),z:clamp(z,12,400),color,intensity:strength,radius:clamp(radius,24,360)});
  };
- const effect=(type,x,y,size,strength=1,progress,rotation=0,color=IVORY)=>{
+ const effect=(type,x,y,size,strength=1,progress,rotation=0,color)=>{
   if(strength<=.025||profile.effects.length>=16)return;
-  profile.effects.push({type,x:clamp(x,-96,1056),y:clamp(y,-60,600),size:clamp(size,12,110),time:t,alpha:clamp(strength,0,.85),...(Number.isFinite(progress)?{progress:clamp(progress)}:{}),rotation:finite(rotation),color});
+  profile.effects.push({type,x:clamp(x,-96,1056),y:clamp(y,-60,600),size:clamp(size,12,110),time:t,alpha:clamp(strength,0,.85),...(Number.isFinite(progress)?{progress:clamp(progress)}:{}),rotation:finite(rotation),color:color||palette.fx[type]||palette.fx.magic});
  };
  const pulse=(p,pattern,type,x,y,size=45,color=IVORY)=>{const strength=flash(p,pattern);if(strength){effect(type,x,y,size,strength,1-strength,0,color);point(x,y,strength*1.45,100,color);}return strength;};
  switch(game.id){

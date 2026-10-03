@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {generateMaterialMaps} from './materials.js';
 import {sceneLighting} from './scene-lighting.js';
+import {paperPalette} from './paper-palette.js';
+import {paperReliefData,paperWingData,paperAlphaContours} from './paper-geometry.js';
 
 /**
  * One reusable 3D paper theater for the board and all twenty-four minigames.
@@ -12,8 +14,9 @@ export function createPaperWorld(art={}){
   let width=960,height=540,lastCalls=0,lastTriangles=0,maxCalls=0,lastLightingKey='',lastShadowTime=-1;
   const features={ao:true,normals:true,metallic:true,lighting:true},shaderErrors=[];
   const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,Number.isFinite(n)?n:lo));
-  const geometryPool=new Set(),materialPool=new Set(),texturePool=new Map(),atlasTextures=new Map(),cutoutGeometries=new Map();
-  const unavailable={draw:()=>false,dispose(){},setFeatures(next={}){for(const key of Object.keys(features))if(typeof next[key]==='boolean')features[key]=next[key];return {...features};},get stats(){return {available:false,frames:0,calls:0,triangles:0,geometries:0,textures:0,lastId:'',width:0,height:0,features:{...features},materials:{pbr:0,normalMapped:0,aoMapped:0,roughnessMapped:0,metalnessMapped:0,paperMetalness:0},materialMaps:{ready:false,size:0},dynamicLights:0,shaderErrors:[...shaderErrors]};}};
+  const geometryPool=new Set(),materialPool=new Set(),texturePool=new Map(),atlasTextures=new Map(),cutoutGeometries=new Map(),realmGeometryCache=new Map();
+  let depthEnabled=true,currentRelief=null;
+  const unavailable={draw:()=>false,dispose(){},setDepth(){return false},setFeatures(next={}){for(const key of Object.keys(features))if(typeof next[key]==='boolean')features[key]=next[key];return {...features};},get stats(){return {available:false,frames:0,calls:0,triangles:0,geometries:0,textures:0,lastId:'',width:0,height:0,features:{...features},materials:{pbr:0,normalMapped:0,aoMapped:0,roughnessMapped:0,metalnessMapped:0,paperMetalness:0},materialMaps:{ready:false,size:0},dynamicLights:0,diorama:{depthEnabled:false,depthLayers:0,reliefVertices:0,contourMeshes:0,texturedMeshes:0,geometryDepth:0,cachedRealms:0},shaderErrors:[...shaderErrors]};}};
   if(typeof document==='undefined')return unavailable;
   try{
     canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;
@@ -59,8 +62,8 @@ export function createPaperWorld(art={}){
     if(m.isMeshStandardMaterial){
       // Grade the lit cardstock toward neutral ivory without altering the saved
       // generated artwork. The metallic-roughness BRDF remains Three's own.
-      m.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\nfloat paperLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(paperLuma) * vec3(1.0, 0.995, 0.975), '+(m.userData.grade??.84).toFixed(2)+');');};
-      m.customProgramCacheKey=()=> 'afterlight-pbr-paper-v2-'+(m.userData.grade??.84);
+      m.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\nfloat paperLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(paperLuma) * vec3(1.0, 0.995, 0.975), '+(m.userData.grade??.42).toFixed(2)+');');};
+      m.customProgramCacheKey=()=> 'afterlight-pbr-paper-v3-'+(m.userData.grade??.42);
       bindSurface(m);
     }
     materialPool.add(m);return m;
@@ -110,8 +113,8 @@ export function createPaperWorld(art={}){
     ],3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,1,.5,1,0,0,.5,1,.5,0,0,0,.5,1,1,1,.5,0,1,1,1,0,.5,0],2));geometry.computeVertexNormals();return ownGeometry(geometry);
   }
   const archGeo=archGeometry(),islandGeo=islandGeometry(),foldGeo=foldedGeometry();
-  const floor=mesh(box,faded);floor.position.set(0,-18,3);floor.scale.set(65,.18,24);floor.receiveShadow=true;
-  const stage=new THREE.Group();scene.add(stage);
+  const floor=mesh(box,faded);floor.position.set(0,-18,3);floor.scale.set(65,.18,24);floor.receiveShadow=true;floor.visible=false;
+  const stage=new THREE.Group();stage.visible=false;scene.add(stage);
   const stageLower=block(stage,edge,0,-6.95,3,38,.55,13);
   block(stage,paper,0,-6.60,3,38.3,.16,13.15);
   block(stage,pale,0,-6.46,3,38.04,.10,13.02);
@@ -138,17 +141,36 @@ export function createPaperWorld(art={}){
 
   const backdropMaterial=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false}));backdropMaterial.userData.grade=.14;backdropMaterial.normalScale.setScalar(.18);backdropMaterial.aoMapIntensity=.34;backdropMaterial.emissive.set('#ffffff');backdropMaterial.emissiveIntensity=.19;
   const backdrop=mesh(plane,backdropMaterial);backdrop.position.set(0,3,-20);backdrop.scale.set(72,40.5,1);
-  // Angled theater wings carry the outer strips of the same printed illustration.
-  // These are real planes in perspective; the center is the unique scene artwork.
+  backdrop.receiveShadow=true;
+  // Four contoured, closed cardstock wings use the SAME printed image and UVs
+  // as the distant relief, with real depth and exposed corrugated edge faces.
+  const wingPrint=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.025}));wingPrint.userData.grade=.14;wingPrint.normalScale.setScalar(.18);wingPrint.aoMapIntensity=.34;wingPrint.emissive.set('#ffffff');wingPrint.emissiveIntensity=.19;
+  const wingEdge=bindSurface(ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',vertexColors:true,transparent:true,depthWrite:false,alphaTest:.025})),'corrugation');
   const wings=[];
-  for(const side of [-1,1]){
-    const geometry=ownGeometry(new THREE.PlaneGeometry(1,1));const uv=geometry.attributes.uv;
-    for(let n=0;n<uv.count;n++)uv.setX(n,(side<0?0:.83)+uv.getX(n)*.17);
-    const panel=mesh(geometry,backdropMaterial);panel.scale.set(11.2,40.5,1);panel.position.set(side*31.5,3,-16.6);panel.rotation.y=side*-.59;wings.push(panel);
+  for(const near of[false,true])for(const side of[-1,1]){
+    const panel=mesh(plane,[wingPrint,wingEdge]);panel.castShadow=false;panel.receiveShadow=true;panel.visible=false;
+    panel.userData={near,side};wings.push(panel);
   }
-  // Cardboard edge strips expose the thickness of the painted theater panel.
-  const panelEdges=[];
-  for(const side of [-1,1])panelEdges.push(block(scene,edge,side*35.96,3,-19.55,.24,40.5,.8));
+  function fromData(data){
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(data.positions,3));geometry.setAttribute('uv',new THREE.BufferAttribute(data.uv,2));geometry.setIndex(new THREE.BufferAttribute(data.indices,1));if(data.colors)geometry.setAttribute('color',new THREE.BufferAttribute(data.colors,4));
+    for(const group of data.groups)geometry.addGroup(group.start,group.count,group.materialIndex);
+    geometry.computeVertexNormals();geometry.computeBoundingSphere();return ownGeometry(geometry);
+  }
+  function prepareRealmRelief(texture){
+    const key=texture.image;
+    if(realmGeometryCache.has(key)){const found=realmGeometryCache.get(key);realmGeometryCache.delete(key);realmGeometryCache.set(key,found);return found;}
+    const scan=document.createElement('canvas');scan.width=192;scan.height=108;const c=scan.getContext('2d',{willReadFrequently:true});c.drawImage(texture.image,0,0,192,108);const image=c.getImageData(0,0,192,108);
+    const relief=paperReliefData(image),wingData=wings.map(p=>paperWingData(image,p.userData));
+    const sceneDepth=[...relief.positions.filter((_,i)=>i%3===2)].map(z=>z-20);for(const data of wingData)for(let i=2;i<data.positions.length;i+=3)sceneDepth.push(data.positions[i]);
+    const depthSpan=Math.max(...sceneDepth)-Math.min(...sceneDepth);
+    const value={relief:fromData(relief),wings:wingData.map(fromData),reliefVertices:relief.positions.length/3,depthRange:relief.depthRange,depthSpan,sourceWidth:texture.image.width,sourceHeight:texture.image.height};realmGeometryCache.set(key,value);
+    while(realmGeometryCache.size>5){const oldest=realmGeometryCache.keys().next().value,entry=realmGeometryCache.get(oldest);for(const geometry of[entry.relief,...entry.wings]){geometry.dispose();geometryPool.delete(geometry);}realmGeometryCache.delete(oldest);}
+    return value;
+  }
+  function applyRealmDepth(){
+    backdrop.geometry=depthEnabled&&currentRelief?currentRelief.relief:plane;backdrop.scale.set(depthEnabled?1:72,depthEnabled?1:40.5,1);
+    for(let n=0;n<wings.length;n++){wings[n].visible=depthEnabled&&!!currentRelief;if(currentRelief)wings[n].geometry=currentRelief.wings[n];}
+  }
 
   const stands=[];
   const standMaterials=[];
@@ -162,9 +184,9 @@ export function createPaperWorld(art={}){
   let currentConfig={seed:1,phase:0,theme:'stone'},atlasReady=false,printedPaper=false;
   const hash=value=>{let seed=2166136261;for(let n=0;n<value.length;n++){seed^=value.charCodeAt(n);seed=Math.imul(seed,16777619);}return seed>>>0;};
   const fraction=(seed,offset)=>{let x=(seed+Math.imul(offset+1,2654435761))>>>0;x^=x>>>16;x=Math.imul(x,2246822507);x^=x>>>13;return(x>>>0)/4294967296;};
-  const nature=new Set(['mothlight','rhythm','orbit','raft']);
-  const workshop=new Set(['inkfall','sweep','sorting','crates','cipher','gallery']);
-  const celestial=new Set(['trace','meteor-melee','fishing','balance']);
+  const nature=new Set(['mothlight','rhythm','maze','hollow-horde','tower-relay','gullet-gala']);
+  const workshop=new Set(['inkfall','sweep','gallery','relic-launch','spark-heist','fuse-festival','bellows-boxing']);
+  const celestial=new Set(['trace','meteor-melee','rift-ball','raft','colossus-wake']);
 
   function realmTexture(id){
     const im=id==='world'?art.world||art.city:art['scene-'+id]||art.world||art.city;
@@ -194,10 +216,10 @@ export function createPaperWorld(art={}){
     // Sample the generated sign's unlettered paper center, retaining its fibers.
     grainCanvas.getContext('2d').drawImage(sign.image,sign.image.width*.26,sign.image.height*.35,sign.image.width*.42,sign.image.height*.25,0,0,128,128);
     const grain=new THREE.CanvasTexture(grainCanvas);grain.colorSpace=THREE.SRGBColorSpace;grain.wrapS=grain.wrapT=THREE.RepeatWrapping;grain.repeat.set(3,3);atlasTextures.set('generated-paper-grain',grain);
-    for(const material of [paper,pale,faded,accent]){material.map=grain;material.needsUpdate=true;}
+    for(const material of [paper,pale,faded,accent,ink]){material.map=grain;material.needsUpdate=true;}
     const edgeCanvas=document.createElement('canvas');edgeCanvas.width=512;edgeCanvas.height=32;
     edgeCanvas.getContext('2d').drawImage(platform,platform.width*.075,platform.height*.042,platform.width*.85,platform.height*.019,0,0,512,32);
-    const corrugation=new THREE.CanvasTexture(edgeCanvas);corrugation.colorSpace=THREE.SRGBColorSpace;corrugation.wrapS=THREE.RepeatWrapping;corrugation.repeat.set(2,1);atlasTextures.set('generated-card-edge',corrugation);edge.map=corrugation;edge.needsUpdate=true;
+    const corrugation=new THREE.CanvasTexture(edgeCanvas);corrugation.colorSpace=THREE.SRGBColorSpace;corrugation.wrapS=THREE.RepeatWrapping;corrugation.repeat.set(2,1);atlasTextures.set('generated-card-edge',corrugation);edge.map=corrugation;edge.needsUpdate=true;wingEdge.map=corrugation;wingEdge.needsUpdate=true;
     printedPaper=true;
   }
   function printedMetalMask(texture,type='trim'){
@@ -217,18 +239,14 @@ export function createPaperWorld(art={}){
   }
   function cutoutGeometry(texture){
     if(cutoutGeometries.has(texture))return cutoutGeometries.get(texture);
-    const scan=document.createElement('canvas');scan.width=48;scan.height=48;const c=scan.getContext('2d');c.drawImage(texture.image,0,0,48,48);const pixels=c.getImageData(0,0,48,48).data;
-    const left=[],right=[];
-    for(let y=0;y<48;y++){
-      let first=-1,last=-1;for(let x=0;x<48;x++)if(pixels[(y*48+x)*4+3]>170){if(first<0)first=x;last=x;}
-      if(last-first>=2){left.push(new THREE.Vector2(first/48-.5,.5-y/48));right.push(new THREE.Vector2((last+1)/48-.5,.5-y/48));}
-    }
-    const contour=[...left,...right.reverse()];
-    if(contour.length<6)return plane;
-    const shape=new THREE.Shape(contour);const geometry=new THREE.ExtrudeGeometry(shape,{depth:.06,bevelEnabled:false,curveSegments:1,steps:1});
-    const position=geometry.attributes.position,uv=geometry.attributes.uv;
-    for(let n=0;n<uv.count;n++)uv.setXY(n,position.getX(n)+.5,position.getY(n)+.5);
-    ownGeometry(geometry);cutoutGeometries.set(texture,geometry);return geometry;
+    const scan=document.createElement('canvas');scan.width=64;scan.height=64;const c=scan.getContext('2d');c.drawImage(texture.image,0,0,64,64);
+    const contours=paperAlphaContours(c.getImageData(0,0,64,64));
+    if(contours.outer.length<3)return plane;
+    const vector=points=>points.map(p=>new THREE.Vector2(...p)),shape=new THREE.Shape(vector(contours.outer));
+    for(const hole of contours.holes)shape.holes.push(new THREE.Path(vector(hole)));
+    const geometry=new THREE.ExtrudeGeometry(shape,{depth:.11,bevelEnabled:false,curveSegments:1,steps:1});
+    const position=geometry.attributes.position,uv=geometry.attributes.uv;for(let n=0;n<uv.count;n++)uv.setXY(n,position.getX(n)+.5,position.getY(n)+.5);
+    geometry.userData={alphaOutline:true,holes:contours.holes.length,pixelArea:contours.pixelArea};ownGeometry(geometry);cutoutGeometries.set(texture,geometry);return geometry;
   }
   function applyStandees(seed){
     paperSurfaces();
@@ -240,7 +258,7 @@ export function createPaperWorld(art={}){
           const printed=bindSurface(ownMaterial(new THREE.MeshStandardMaterial({map:portal,color:'#dedbd3',alphaTest:.2,side:THREE.DoubleSide})),'paper',printedMetalMask(portal));
           arch.frame.geometry=geometry;arch.frame.material=[printed,edge];arch.frame.scale.set(4.1,9.8,5);
         }
-        arch.fold.visible=false;
+        for(const child of arch.group.children)if(child!==arch.frame)child.visible=false;
       }
     }
     let count=0;
@@ -249,7 +267,8 @@ export function createPaperWorld(art={}){
       const texture=atlasTexture('paper-platforms',0,(n+(seed%3))%4,1,4);
       if(!texture)continue;
       const value=stands[count],material=standMaterials[count];material.map=texture;bindSurface(material,'paper',printedMetalMask(texture));value.visible=true;
-      islands[n].group.add(value);value.position.set(0,-.27,1.28);value.rotation.set(0,0,0);value.scale.set(4.55,1.26,1);count++;
+      for(const child of islands[n].group.children)child.visible=false;
+      islands[n].group.add(value);value.visible=true;value.geometry=cutoutGeometry(texture);value.material=[material,edge];value.position.set(0,-.1,0);value.rotation.set(-.05,0,0);value.scale.set(4.55,1.65,4.2);count++;
     }
     // Dedicated generated paper objects are a 3×3 sheet, in reading order:
     // gauge, rope, altar; star, portal, pedestal; sign, crate, crown.
@@ -270,8 +289,9 @@ export function createPaperWorld(art={}){
     const seed=hash(id),theme=nature.has(id)?'grove':workshop.has(id)?'workshop':celestial.has(id)?'astral':'cathedral';
     currentConfig={seed,theme,phase:fraction(seed,0)*Math.PI*2};
     const map=realmTexture(id);if(!map)return false;
-    backdropMaterial.map=map;backdropMaterial.emissiveMap=map;backdropMaterial.needsUpdate=true;
-    const tint=theme==='grove'?'#a0a08c':theme==='workshop'?'#a5906e':theme==='astral'?'#aaa3a3':'#b5a893';accent.color.set(tint);
+    backdropMaterial.map=map;backdropMaterial.emissiveMap=map;backdropMaterial.needsUpdate=true;wingPrint.map=map;wingPrint.emissiveMap=map;wingPrint.needsUpdate=true;
+    currentRelief=prepareRealmRelief(map);applyRealmDepth();
+    const palette=paperPalette(id);paper.color.set(palette.paper);pale.color.set(palette.paper);faded.color.set(palette.bounce);edge.color.set(palette.edge);wingEdge.color.set(palette.edge);ink.color.set(palette.ink);accent.color.set(palette.accent);scene.background.set(palette.ambient);scene.fog.color.set(palette.ambient);
     const board=id==='world';
     for(let n=0;n<arches.length;n++){
       const side=n%2?-1:1,far=n>=2,arch=arches[n],heightScale=(far?.62:.97)*(theme==='workshop'?.82:theme==='astral'?1.08:1);
@@ -281,7 +301,7 @@ export function createPaperWorld(art={}){
     }
     for(let n=0;n<islands.length;n++){
       const side=n%2?-1:1,island=islands[n];island.group.position.set(side*(9.7+fraction(seed,n+17)*2.8),2.8+fraction(seed,n+24)*4.6,-8-n*2.8);
-      const scale=.52+fraction(seed,n+30)*.40;island.group.scale.set(scale,scale,scale);island.group.rotation.y=(fraction(seed,n+34)-.5)*1.3;island.group.rotation.z=side*.03;
+      const scale=.62+fraction(seed,n+30)*.44;island.group.scale.set(scale,scale,scale);island.group.rotation.y=(fraction(seed,n+34)-.5)*1.7;island.group.rotation.z=side*.03;
       island.baseY=island.group.position.y;island.phase=fraction(seed,n+39)*Math.PI*2;
     }
     stage.position.y=board?-10.6:-10.2;
@@ -309,6 +329,7 @@ export function createPaperWorld(art={}){
     // Directional shadows follow changing realm lights at a bounded cadence.
     if(force||time<lastShadowTime||time-lastShadowTime>=.15){renderer.shadowMap.needsUpdate=true;lastShadowTime=time;}
   }
+  function setDepth(enabled=true){depthEnabled=!!enabled;applyRealmDepth();lastTime=-1;renderer.shadowMap.needsUpdate=true;return depthEnabled;}
   function setFeatures(next={}){
     let changed=false;for(const key of Object.keys(features))if(typeof next[key]==='boolean'&&features[key]!==next[key]){features[key]=next[key];changed=true;}
     if(changed){for(const material of materialPool)applyFeatures(material);lastTime=-1;lastLightingKey='';renderer.shadowMap.needsUpdate=true;}
@@ -326,8 +347,8 @@ export function createPaperWorld(art={}){
       if(time!==lastTime||resized||lightingKey!==lastLightingKey){
         updateLighting(profile,time,lastTime<0||resized);
         const phase=currentConfig.phase;
-        camera.position.set(Math.sin(time*.14+phase)*.47,4.45+Math.sin(time*.11+phase)*.17,26.1+Math.cos(time*.10+phase)*.13);
-        camera.lookAt(Math.sin(time*.095+phase)*.12,1.72,-2.0);
+        camera.position.set(Math.sin(time*.14+phase)*.82,4.45+Math.sin(time*.11+phase)*.23,26.1+Math.cos(time*.10+phase)*.13);
+        camera.lookAt(Math.sin(time*.095+phase)*.15,1.72,-2.0);
         for(const island of islands){island.group.position.y=island.baseY+Math.sin(time*.63+island.phase)*.16;island.group.rotation.x=Math.sin(time*.34+island.phase)*.035;}
         for(const arch of arches)arch.fold.rotation.z=Math.sin(time*.68+arch.phase)*.025;
         for(let n=0;n<16;n++){
@@ -339,13 +360,13 @@ export function createPaperWorld(art={}){
         renderer.render(scene,camera);frames++;lastTime=time;lastLightingKey=lightingKey;lastCalls=renderer.info.render.calls;lastTriangles=renderer.info.render.triangles;maxCalls=Math.max(maxCalls,lastCalls);
       }
       ctx.drawImage(canvas,0,0,w,h);return true;
-    }catch{lost=true;return false;}
+    }catch(error){shaderErrors.push({runtime:String(error?.message||error)});lost=true;return false;}
   }
   function dispose(){
     if(disposed)return;disposed=true;
     for(const texture of texturePool.values())texture.dispose();for(const texture of atlasTextures.values())texture.dispose();
     for(const geometry of geometryPool)geometry.dispose();for(const material of materialPool)material.dispose();
-    texturePool.clear();atlasTextures.clear();environmentTarget.dispose();scene.environment=null;scene.clear();renderer.dispose();renderer.forceContextLoss();canvas.width=1;canvas.height=1;
+    texturePool.clear();atlasTextures.clear();realmGeometryCache.clear();currentRelief=null;environmentTarget.dispose();scene.environment=null;scene.clear();renderer.dispose();renderer.forceContextLoss();canvas.width=1;canvas.height=1;
   }
-  return {draw,dispose,setFeatures,get stats(){const active=[...materialPool].filter(m=>m.isMeshStandardMaterial);return {available:!disposed&&!lost,frames,calls:lastCalls,maxCalls,triangles:lastTriangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,cachedRealmTextures:texturePool.size,lastId,width,height,features:{...features},materials:{pbr:active.length,normalMapped:active.filter(m=>m.normalMap).length,aoMapped:active.filter(m=>m.aoMap).length,roughnessMapped:active.filter(m=>m.roughnessMap).length,metalnessMapped:active.filter(m=>m.metalnessMap&&m.metalness>0).length,paperMetalness:paper.metalness},materialMaps:{ready:!disposed,size:measuredMaps.size,kinds:['paper','corrugation','foil'],colorSpace:'linear'},dynamicLights:features.lighting?2+points.filter(p=>p.visible&&p.intensity>0).length:0,shaderErrors:[...shaderErrors]};}};
+  return {draw,dispose,setFeatures,setDepth,get stats(){const active=[...materialPool].filter(m=>m.isMeshStandardMaterial);let texturedMeshes=0,untexturedMeshes=0;scene.traverseVisible(node=>{if(node.isMesh){const materials=Array.isArray(node.material)?node.material:[node.material];if(materials.every(m=>!!m.map))texturedMeshes++;else untexturedMeshes++;}});return {available:!disposed&&!lost,frames,calls:lastCalls,maxCalls,triangles:lastTriangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,cachedRealmTextures:texturePool.size,lastId,width,height,features:{...features},materials:{pbr:active.length,normalMapped:active.filter(m=>m.normalMap).length,aoMapped:active.filter(m=>m.aoMap).length,roughnessMapped:active.filter(m=>m.roughnessMap).length,metalnessMapped:active.filter(m=>m.metalnessMap&&m.metalness>0).length,paperMetalness:paper.metalness},materialMaps:{ready:!disposed,size:measuredMaps.size,kinds:['paper','corrugation','foil'],colorSpace:'linear'},dynamicLights:features.lighting?2+points.filter(p=>p.visible&&p.intensity>0).length:0,diorama:{depthEnabled,depthLayers:depthEnabled?5:1,reliefVertices:depthEnabled?currentRelief?.reliefVertices||0:0,contourMeshes:depthEnabled?wings.filter(p=>p.visible).length:0,texturedMeshes,untexturedMeshes,geometryDepth:depthEnabled?currentRelief?.depthSpan||0:0,cachedRealms:realmGeometryCache.size,alphaExtrusions:cutoutGeometries.size,cutoutHoles:[...cutoutGeometries.values()].reduce((sum,g)=>sum+(g.userData.holes||0),0),portalHoles:cutoutGeometries.get(atlasTextures.get('paper-objects:1:1:3:3'))?.userData.holes||0,sourceWidth:currentRelief?.sourceWidth||0,sourceHeight:currentRelief?.sourceHeight||0,palette:paperPalette(lastId).id},shaderErrors:[...shaderErrors]};}};
 }

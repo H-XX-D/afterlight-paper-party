@@ -1,7 +1,7 @@
 import './style.css';
-import {CHARACTERS,loadArt,art,helpers,character,prop,drawCity,portrait,paperWorldStats,setMaterialFeatures,materialStats,materialFeatures,resetVisualMotion,paperAnimationStats} from './art.js';
+import {CHARACTERS,loadArt,art,helpers,character,prop,drawCity,portrait,paperWorldStats,setMaterialFeatures,materialStats,materialFeatures,resetVisualMotion,paperAnimationStats,setWorldDepth} from './art.js';
 import {MINIGAMES,createGame,stepGame,drawGame,getGameResults} from './minigames.js';
-import {createParty,actParty,stepParty,finishMinigame,rankPlayers,drawBoard,playableCards,viewParty,CARD_COLORS,CARD_SYMBOLS,CARD_PALETTE,finishingBonus,finishProjection} from './board.js';
+import {paperBoardStats,createParty,actParty,stepParty,finishMinigame,rankPlayers,drawBoard,playableCards,viewParty,CARD_COLORS,CARD_SYMBOLS,CARD_PALETTE,finishingBonus,finishProjection} from './board.js';
 import {SPECIALS,BRAWL_GAMES} from './brawlers.js';
 import {PartyNetwork} from './network.js';
 import {RealtimeGame} from './realtime.js';
@@ -158,11 +158,11 @@ function makeThumbnails(){const c=document.createElement('canvas');c.width=960;c
 $('#app').innerHTML='<div class="loading"><div><h1>AFTERLIGHT</h1><span class="loading-mark" role="status" aria-label="Loading">✦</span></div></div>';
 try{await loadArt();makeThumbnails();render();requestAnimationFrame(frame);if(new URLSearchParams(location.search).has('room'))profileModal('online')}catch(error){$('#app').innerHTML=`<div class="loading"><div><h1>Unable to load</h1><p>${esc(error.message)}</p><button onclick="location.reload()" class="button">Try again</button></div></div>`;console.error(error)}
 // Read-only diagnostics for smoke tests and inspection; no alternate network path.
-window.afterlight={materials:{setFeatures:setMaterialFeatures,get features(){return materialFeatures()},get stats(){return materialStats()},resetMotion:resetVisualMotion},
+window.afterlight={materials:{setFeatures:setMaterialFeatures,setDepth:setWorldDepth,get features(){return materialFeatures()},get stats(){return materialStats()},resetMotion:resetVisualMotion},
  renderVisualFixture({game,features={},background=true,lightingProfile}={}){
   const before=JSON.stringify(game),saved=materialFeatures();setMaterialFeatures({...saved,...features});resetVisualMotion(game.time??0);
   const canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;const ctx=canvas.getContext('2d');
   const fixtureHelpers={...helpers,...(!background?{background(){}}:{}),beginScene(ctx,id,time,profile){helpers.beginScene(ctx,id,time,lightingProfile||profile)}};
   try{drawGame(ctx,game,fixtureHelpers);return {image:canvas.toDataURL('image/png'),stats:materialStats(),features:materialFeatures(),stateUnchanged:before===JSON.stringify(game)}}
   finally{setMaterialFeatures(saved);resetVisualMotion()}
- },get animation(){return paperAnimationStats()},get boardCamera(){return boardCamera},get state(){return party},get network(){return network},get route(){return route},get renderedGame(){return renderedGame},get prediction(){return prediction},get paperWorld(){return paperWorldStats()},get minigames(){return MINIGAMES.map(({id,name})=>({id,name}))}};
+ },get animation(){return paperAnimationStats()},get boardCamera(){return boardCamera},get state(){return party},get network(){return network},get route(){return route},get renderedGame(){return renderedGame},get prediction(){return prediction},get paperBoard(){return paperBoardStats()},get paperWorld(){return paperWorldStats()},get minigames(){return MINIGAMES.map(({id,name})=>({id,name}))}};

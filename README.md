@@ -1,6 +1,6 @@
 # AFTERLIGHT — Paper Party
 
-A one-to-four-player browser party game with eight original paper travelers, a 48-space realm board, color-matching card turns, and **24 minigames**. Its art direction combines the inked industrial atmosphere of [Lorn’s “Anvil,” featured by METALOCUS](https://www.metalocus.es/en/news/anvil-lorn), dimensional paper cutouts and floating dioramas. Characters, scenery and generated game artwork are original. [RESEARCH-DESIGN.md](RESEARCH-DESIGN.md) records the design references and distinguishes their documented features from Afterlight’s own implementation.
+A desktop browser party game for one to four players with eight original paper travelers, a 48-space realm board, color-matching card turns, and **24 minigames**. Its art direction combines the inked industrial atmosphere of [Lorn’s “Anvil,” featured by METALOCUS](https://www.metalocus.es/en/news/anvil-lorn), dimensional paper cutouts and floating dioramas. Characters, scenery and generated game artwork are original. [RESEARCH-DESIGN.md](RESEARCH-DESIGN.md) records the design references and distinguishes their documented features from Afterlight’s own implementation.
 
 **Open and share one file**
 
@@ -8,7 +8,7 @@ Open **[AFTERLIGHT.html](AFTERLIGHT.html)** directly in a current browser. Send 
 
 The title screen offers **Play solo** for a solo party, **Play with friends** to host or join, and **Minigames** to select a minigame. Choose one of eight travelers. For an online party, every friend opens their own copy, chooses Play with friends, and enters the host’s six-character room code. The host starts from the lobby; empty seats become computer rivals. Keep the host’s tab open and visible. A static HTTPS website is also an option for sharing a URL.
 
-The interface fills the viewport without a permanent game header. Compact corner buttons open the overview, fullscreen and pause menu. Detailed instructions live under **Controls & rules** in the pause menu and in a collapsed section before each minigame. On the board, portrait plates show points, cards and the leader, while a fanned hand dock holds your cards. Played cards fly to the discard with a slap and paper particles. During minigames, the illustrated game HUD supplies scores, a timer and objective status. Platform fights also show damage, lives, shields and special cooldowns. The board camera follows movement and transport; its overview button returns to the full route. Touch controls remain available on small screens.
+The interface fills the viewport without a permanent game header. Compact corner buttons open the overview, fullscreen and pause menu. Detailed instructions live under **Controls & rules** in the pause menu and in a collapsed section before each minigame. On the board, portrait plates show points, cards and the leader, while a fanned hand dock holds your cards. Played cards fly to the discard with a slap and paper particles. During minigames, the illustrated game HUD supplies scores, a timer and objective status. Platform fights also show damage, lives, shields and special cooldowns. The board camera follows movement and transport; its overview button returns to the full route. The current layout and visual tuning target desktop displays.
 
 Rebuild the shareable file after source changes:
 
@@ -212,9 +212,9 @@ Prompt records named `ASSET-PROMPTS*.json` and runtime sprites are included; raw
 
 Board paths, ladders, chutes and the follow camera use simulation positions. Paper neck extensions animate Gullet’s mouths; card flights, discard impacts and paper stars make card actions visible. Shared pixel effects signal hits, shielding, dust and rewards. These are runtime animations of original generated artwork. The current [verification record](VERIFICATION.md) identifies the standalone build actually tested. Generated screenshots and recordings remain local test artifacts.
 
-A reusable Three.js scene places folded geometry, textured standees, floating layers and camera parallax behind the gameplay plane. The game is a **2.5D paper theater**, with two-dimensional authoritative mechanics. Canvas/CSS supplies card labels, controls and HUD text; audio is synthesized by `src/audio.js`. If WebGL is unavailable, the illustrated canvas remains playable.
+The board and all 24 levels use image-derived relief and four closed, folded scene wings, with perspective parallax between the printed layers. Portal and scenery silhouettes are extruded from their original alpha contours, retaining openings and printed faces. The 48 board stops, route stones, ladders and chutes are actual textured paper solids with cut rims and cast shadows; their fixed view is baked once and reused during camera movement to avoid an extra GPU pass every frame. The four gameplay-platform illustrations are also baked from alpha-cut solids, retaining their original printed fronts, collision alignment and subtle cut depth. The game is a **2.5D paper theater**, with two-dimensional authoritative mechanics. Canvas/CSS supplies card labels, controls and HUD text; audio is synthesized by `src/audio.js`. If WebGL is unavailable, the illustrated canvas remains playable.
 
-Three.js materials use normal relief, ambient occlusion, roughness and selective metalness so worn foil responds differently from matte paper. The foreground sprite-material pass caches derived surface maps and lights the composed gameplay art on the GPU. The world and sprites share deterministic profiles from `src/scene-lighting.js`; lights respond to gameplay such as carried moths, train lamps, rhythm strikes, warnings, fighter specials and feast activity. HUD text renders after scene lighting. The [verification record](VERIFICATION.md) distinguishes current release checks from historical material/performance measurements.
+Five muted palettes—ivory, sage, violet, copper and frost—coordinate paper rims, reflected light and pixel effects. Effect sprites are dyed once in a cache capped at 80 variants; dark ink and alpha silhouettes remain intact. Three.js materials use normal relief, ambient occlusion, roughness and selective metalness so worn foil responds differently from matte paper. The foreground sprite-material pass caches derived surface maps and lights the composed gameplay art on the GPU. The world and sprites share deterministic profiles from `src/scene-lighting.js`; lights respond to gameplay such as carried moths, train lamps, rhythm strikes, warnings, fighter specials and feast activity. HUD text renders after scene lighting. The [verification record](VERIFICATION.md) distinguishes current release checks from historical material/performance measurements.
 
 **Develop or host the source build**
 
@@ -243,7 +243,8 @@ The static site build goes to `dist/`; the production preview uses port 5188. Up
 - `src/gullet-gala.js`: shared-pellet feeding simulation and drawing.
 - `src/game-hud.js`: illustrated minigame HUD.
 - `src/network.js` and `src/realtime.js`: PeerJS transport, recipient privacy, fixed-step prediction and reconciliation.
-- `src/art.js`, `src/paper-world.js`, `src/sprite-materials.js`, `src/scene-lighting.js`: artwork, diorama and material/light rendering.
+- `src/art.js`, `src/paper-world.js`, `src/paper-board.js`, `src/paper-geometry.js`: original artwork, illustrated relief, folded layers and solid paper surfaces.
+- `src/paper-palette.js`, `src/paper-pigment.js`, `src/sprite-materials.js`, `src/scene-lighting.js`: cached pigments and material/light rendering.
 
 Simulation state is seeded and JSON-serializable. Run:
 

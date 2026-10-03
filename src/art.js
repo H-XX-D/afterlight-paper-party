@@ -2,6 +2,8 @@ import {createPaperAnimator,measurePaperCell,referenceBodyHeight,paperFrameGeome
 import {createPaperWorld} from './paper-world.js';
 import {createSpriteMaterials} from './sprite-materials.js';
 import {sceneLighting} from './scene-lighting.js';
+import {PAPER_SOURCE_FILTER,tintPaperPixels,paperCutEdgePixels,createPaperEffectCache} from './paper-pigment.js';
+import {bakePaperPlatforms,paperPlatformStats,PAPER_PLATFORM_CELLS} from './paper-board.js';
 import assetManifest from '../assets-manifest.json';
 
 export const ASSET_MANIFEST = Object.freeze(assetManifest.images);
@@ -22,6 +24,7 @@ export async function loadArt(){
   const im=new Image();im.onload=()=>{art[name]=im;resolve()};im.onerror=()=>reject(new Error(`Could not load ${name} artwork.`));im.src=window.AFTERLIGHT_ASSETS?.[name]??`${import.meta.env.BASE_URL}assets/${file}`;
  })));
  prepareActorFrames();
+ preparePlatformFrames();
  if(!paperWorld)paperWorld=createPaperWorld(art);
  if(!spriteMaterials)spriteMaterials=createSpriteMaterials();
 }
@@ -38,6 +41,10 @@ const NEW_CUTS=[
 const ATTACK_CUTS=[[[20,8,492,334],[512,50,511,295]],[[15,347,497,383],[522,329,500,430]],[[18,761,492,374],[522,771,493,363]],[[18,1145,508,360],[529,1149,493,357]]];
 const OBJECTIVE_CUTS={target:[0,0,420,444],dummy:[483,0,350,444],foe:[881,0,385,444],ball:[1320,21,453,411],bank:[0,443,432,443],bomb:[455,443,413,443],checkpoint:[884,443,263,443],boss:[1179,427,595,460]};
 const paperSprites=new Map(),portraits=new Map(),actorFrames=new Map(),actorAnimator=createPaperAnimator();
+const platformFrames=new Map();
+const effectSprites=createPaperEffectCache((source,color)=>{
+ const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;const cx=canvas.getContext('2d',{willReadFrequently:true});cx.drawImage(source,0,0);const image=cx.getImageData(0,0,canvas.width,canvas.height);image.data.set(tintPaperPixels(image.data,color));cx.putImageData(image,0,0);return canvas;
+});
 const canvasScopes=new WeakMap();let nextCanvasScope=0,activeTime=0,paperReducedMotion=false;
 let paperWorld=null,spriteMaterials=null,activeScene='world',activeLighting=null,fixtureClock=null;
 const clock=()=>fixtureClock??performance.now()/1000;
@@ -46,15 +53,16 @@ export function endScene(ctx){spriteMaterials?.end(ctx)}
 export function clipMaterials(ctx,x,y,w,h){spriteMaterials?.clip(ctx,x,y,w,h)}
 export function restoreMaterials(){spriteMaterials?.restoreClip()}
 export function setMaterialFeatures(features){paperWorld?.setFeatures(features);spriteMaterials?.setFeatures(features)}
-export function materialStats(){return {world:paperWorldStats(),sprites:spriteMaterials?.stats||{available:false}}}
+export function setWorldDepth(value){return paperWorld?.setDepth?.(value)}
+export function materialStats(){return {world:paperWorldStats(),sprites:spriteMaterials?.stats||{available:false},platforms:{...paperPlatformStats(),cachedFrames:platformFrames.size}}}
 export function materialFeatures(){return spriteMaterials?.features||{ao:true,normals:true,metallic:true,lighting:true}}
 export function resetVisualMotion(time=null){actorAnimator.reset();fixtureClock=time}
 export function setPaperReducedMotion(value){paperReducedMotion=!!value;actorAnimator.setReducedMotion(paperReducedMotion)}
-export function paperAnimationStats(){return {frames:actorFrames.size,actors:actorAnimator.size,reducedMotion:paperReducedMotion,crossfadeMilliseconds:45,motionSheets:['motion-classic','motion-new'].filter(k=>!!art[k])}}
+export function paperAnimationStats(){return {frames:actorFrames.size,actors:actorAnimator.size,reducedMotion:paperReducedMotion,crossfadeMilliseconds:45,motionSheets:['motion-classic','motion-new'].filter(k=>!!art[k]),sourceFilter:PAPER_SOURCE_FILTER,cutEdges:'cached printed silhouette rim',effectCache:effectSprites.stats}}
 function surface(ctx,c,x,y,w,h,kind='paper'){ctx.drawImage(c,x,y,w,h);spriteMaterials?.record(ctx,c,x,y,w,h,kind)}
 function cachedCut(name,sx,sy,sw,sh,maximum=512){
  const key=[name,sx,sy,sw,sh,maximum].join(':');if(paperSprites.has(key))return paperSprites.get(key);const im=art[name];if(!im)return null;
- const c=document.createElement('canvas'),scale=Math.min(1,maximum/Math.max(sw,sh));c.width=Math.ceil(sw*scale);c.height=Math.ceil(sh*scale);const cx=c.getContext('2d');cx.filter='grayscale(.82) sepia(.12) saturate(.6)';cx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);paperSprites.set(key,c);return c;
+ const c=document.createElement('canvas'),scale=Math.min(1,maximum/Math.max(sw,sh));c.width=Math.ceil(sw*scale);c.height=Math.ceil(sh*scale);const cx=c.getContext('2d');cx.filter=PAPER_SOURCE_FILTER;cx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);paperSprites.set(key,c);return c;
 }
 // Original generated board pieces, cropped at their solid alpha bounds. The
 // transparent atlas stays intact; strips bend the chute art along the same path
@@ -72,27 +80,38 @@ export function object(ctx,type,x,y,w=50,h=w,time=0,options={}){
  ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.translate(x,y);ctx.rotate(options.rotation||0);ctx.scale(options.flipX?-1:1,1);
  ctx.drawImage(c,-w/2+2,-h/2+3,w,h);surface(ctx,c,-w/2,-h/2,w,h,['gauge','altar','star','portal','crown','pedestal'].includes(type)?'foil':'paper');ctx.restore();
 }
+const PLATFORM_CUTS=[[90,10,1360,255],[280,277,974,235],[174,502,1179,281],[133,760,1280,250]];
+function preparePlatformFrames(){
+ platformFrames.clear();if(!art['paper-platforms'])return;
+ const atlas=bakePaperPlatforms((ctx,type,x,y,w,h)=>{
+  const index=Number(type.slice('platform-'.length)),cut=PLATFORM_CUTS[index];if(!cut)return;const source=cachedCut('paper-platforms',...cut,1024);if(source)ctx.drawImage(source,x-w/2,y-h/2,w,h);
+ });
+ if(!atlas)return;
+ for(const cell of PAPER_PLATFORM_CELLS){const canvas=document.createElement('canvas');canvas.width=cell.width;canvas.height=cell.height;canvas.getContext('2d').drawImage(atlas,cell.x,cell.y,cell.width,cell.height,0,0,cell.width,cell.height);platformFrames.set(cell.index,canvas);}
+}
 export function platform(ctx,x,y,w,depth=40,time=0,variant=0){
  const im=art['paper-platforms'];if(!im)return;const index=typeof variant==='number'?Math.max(0,Math.min(3,variant)):({stone:0,default:0,wood:3,bridge:3,shrine:2,balcony:1}[variant]??0);
  // Irregular source silhouettes are cropped by atlas cell. The walkable rim stays at y.
- const cuts=[[90,10,1360,255],[280,277,974,235],[174,502,1179,281],[133,760,1280,250]],cut=cuts[index],c=cachedCut('paper-platforms',...cut,1024);if(!c)return;
+ const cut=PLATFORM_CUTS[index],c=platformFrames.get(index)||cachedCut('paper-platforms',...cut,1024);if(!c)return;
  const drawnHeight=Math.max(depth,index===3?w*.15:w*.14),topOffset=index===2?.48:index===3?.36:.04;
- ctx.save();ctx.drawImage(c,x-3,y-topOffset*drawnHeight+4,w+6,drawnHeight);surface(ctx,c,x,y-topOffset*drawnHeight,w,drawnHeight,'foil');ctx.restore();
+ ctx.save();if(platformFrames.has(index)){const cell=PAPER_PLATFORM_CELLS[index],sx=w/cell.contentWidth,sy=drawnHeight/cell.contentHeight;surface(ctx,c,x-cell.contentX*sx,y-topOffset*drawnHeight-cell.contentY*sy,cell.width*sx,cell.height*sy,'foil');}
+ else{ctx.drawImage(c,x-3,y-topOffset*drawnHeight+4,w+6,drawnHeight);surface(ctx,c,x,y-topOffset*drawnHeight,w,drawnHeight,'foil');}ctx.restore();
 }
 export function fx(ctx,type,x,y,size=42,time=0,options={}){
  const im=art['pixel-fx'];if(!im)return;const row=({hit:0,dust:1,magic:2,shield:3}[type]??0),progress=options.progress;
  const frame=Number.isFinite(progress)?Math.min(3,Math.max(0,Math.floor(progress*4))):Math.floor(Math.abs(time)*12)%4;
- const cw=im.width/4,ch=im.height/4,c=cachedCut('pixel-fx',frame*cw,row*ch,cw,ch,64);if(!c)return;
+ const cw=im.width/4,ch=im.height/4,source=cachedCut('pixel-fx',frame*cw,row*ch,cw,ch,64),c=effectSprites.get(source,['hit','dust','magic','shield'][row],frame,activeScene,options.color);if(!c)return;
  ctx.save();ctx.globalAlpha*=Math.max(0,Math.min(1,options.alpha??1));ctx.imageSmoothingEnabled=false;ctx.translate(Math.round(x/2)*2,Math.round(y/2)*2);ctx.rotate(options.rotation||0);ctx.scale(options.flipX?-1:1,1);ctx.drawImage(c,-size/2,-size/2,size,size);ctx.restore();
 }
 function prepareActorFrames(){
- actorFrames.clear();portraits.clear();actorAnimator.reset();const pixels=new Map();
+ actorFrames.clear();portraits.clear();effectSprites.clear();actorAnimator.reset();const pixels=new Map();
  function imagePixels(name){if(pixels.has(name))return pixels.get(name);const im=art[name];if(!im)return null;const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);const data=cx.getImageData(0,0,c.width,c.height);pixels.set(name,data);return data;}
  function frame(name,cut){
   const data=imagePixels(name);if(!data)return null;const bounds=measurePaperCell(data,{x:cut[0],y:cut[1],width:cut[2],height:cut[3]},{includeMask:true});if(bounds.empty)return null;
   const source=document.createElement('canvas');source.width=bounds.width;source.height=bounds.height;const sc=source.getContext('2d'),rgba=sc.createImageData(bounds.width,bounds.height);
   for(let y=0;y<bounds.height;y++)for(let x=0;x<bounds.width;x++){const ix=bounds.x+x,iy=bounds.y+y,mx=ix-bounds.cellX,my=iy-bounds.cellY,at=(y*bounds.width+x)*4,original=(iy*data.width+ix)*4;if(mx<0||my<0||mx>=bounds.cellWidth||my>=bounds.cellHeight||!bounds.mask[my*bounds.cellWidth+mx])continue;rgba.data[at]=data.data[original];rgba.data[at+1]=data.data[original+1];rgba.data[at+2]=data.data[original+2];rgba.data[at+3]=data.data[original+3];}sc.putImageData(rgba,0,0);
-  const sprite=document.createElement('canvas'),scale=Math.min(1,384/Math.max(bounds.width,bounds.height));sprite.width=Math.ceil(bounds.width*scale);sprite.height=Math.ceil(bounds.height*scale);const cx=sprite.getContext('2d');cx.filter='grayscale(.82) sepia(.12) saturate(.6)';cx.drawImage(source,0,0,sprite.width,sprite.height);
+  const sprite=document.createElement('canvas'),scale=Math.min(1,384/Math.max(bounds.width,bounds.height));sprite.width=Math.ceil(bounds.width*scale);sprite.height=Math.ceil(bounds.height*scale);const cx=sprite.getContext('2d',{willReadFrequently:true});cx.filter=PAPER_SOURCE_FILTER;cx.drawImage(source,0,0,sprite.width,sprite.height);
+  const printed=cx.getImageData(0,0,sprite.width,sprite.height);printed.data.set(paperCutEdgePixels(printed.data,sprite.width,sprite.height,Math.max(sprite.width,sprite.height)*.008));cx.putImageData(printed,0,0);
   const {mask,cellX,cellY,cellWidth,cellHeight,...metrics}=bounds;return {sprite,...metrics,reference:metrics.bodyHeight,sheet:name};
  }
  for(let idx=0;idx<8;idx++){
