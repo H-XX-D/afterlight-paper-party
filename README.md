@@ -4,6 +4,8 @@ A desktop browser party game for one to four players with eight original paper t
 
 **Open and share one file**
 
+
+
 Open **[AFTERLIGHT.html](AFTERLIGHT.html)** directly in a current browser. Send that file to friends: it embeds the game code, PeerJS, styling, fonts, scenery and sprites. Solo party and arcade play work offline. Online rooms need internet access for signaling and WebRTC.
 
 The title screen offers **Play solo** for a solo party, **Play with friends** to host or join, and **Minigames** to select a minigame. Choose one of eight travelers in the large portrait picker; the selected traveler’s special is described beside the cast. Solo and arcade practice offer **Easy / Medium / Hard** computer rivals, with **Medium** as the default. For an online party, every friend opens their own copy, chooses Play with friends, and enters the host’s six-character room code. The lobby displays four large paper travelers. Click your own portrait to change your traveler or name, then apply the choice; every participant receives the host’s updated roster. The host chooses the rival difficulty and starts the party; empty seats become computer rivals. Character edits stop when the party starts. Keep the host’s tab open and visible. A static HTTPS website is also an option for sharing a URL.
