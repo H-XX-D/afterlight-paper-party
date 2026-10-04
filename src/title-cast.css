@@ -1,0 +1,24 @@
+/* Desktop title stage: the menu faces the original four paper travelers. */
+.shell[data-route=home] .hero.title-cast-ready{min-height:100dvh;height:100dvh;display:block}
+.shell[data-route=home] .hero.title-cast-ready .hero-copy{position:absolute;left:5.6%;top:50%;width:43%;padding:0;transform:translateY(-50%);text-align:left;z-index:4}
+.hero.title-cast-ready h1{font-size:clamp(72px,7.45vw,142px);letter-spacing:.025em;line-height:.88}
+.hero.title-cast-ready .title-menu{width:min(400px,95%);margin:41px 0 0;gap:16px}
+.hero.title-cast-ready .mode-card{min-height:74px;padding:13px 23px;grid-template-columns:38px 1fr 20px;transform-origin:10% 50%}
+.hero.title-cast-ready .mode-card h3{font-size:28px}
+.title-cast{position:absolute;right:-.8%;bottom:1%;width:53.5%;height:94%;z-index:3;pointer-events:none;filter:drop-shadow(14px 18px 5px #03020580)}
+.title-cast canvas{display:block;width:100%;height:100%;object-fit:contain;object-position:center bottom}
+.hero.title-cast-ready::after{background:linear-gradient(90deg,#0b090dc9 0,#1510187a 41%,#18141a22 66%,#08070b33 100%),linear-gradient(0deg,#101013ba 0,transparent 32%,#0c0b1155 100%)}
+.hero.title-cast-ready[data-celebrating=true] .mode-card{pointer-events:none}
+.hero.title-cast-ready[data-celebrating=true] .mode-card.title-choice-selected{animation:title-option-stamp .42s cubic-bezier(.25,.72,.35,1) both;box-shadow:0 5px 0 #4a3526,0 8px 28px #d8bc7955}
+.title-transition-overlay{position:fixed;inset:0;z-index:200;pointer-events:none;background:#141116;opacity:0;transition:opacity .2s ease-in;will-change:opacity}
+.title-transition-overlay[data-covered=true],.title-transition-overlay.is-covered{opacity:1}
+.title-screen-enter{animation:title-screen-reveal .24s ease-out both}
+@keyframes title-option-stamp{0%{transform:translateY(0) scale(1)}23%{transform:translateY(3px) scale(.97,1.02)}60%{transform:translateY(-4px) scale(1.04,.98)}100%{transform:translateY(-1px) scale(1.015)}}
+@keyframes title-screen-reveal{from{opacity:0}to{opacity:1}}
+@media(min-width:1800px){.shell[data-route=home] .hero.title-cast-ready .hero-copy{left:8.5%;width:40%}.title-cast{right:2.5%;width:49%}}
+@media(max-height:760px) and (min-width:761px){.hero.title-cast-ready .title-menu{margin-top:32px;gap:14px}.hero.title-cast-ready .mode-card{min-height:65px}.hero.title-cast-ready .mode-card h3{font-size:26px}.title-cast{bottom:0;height:96%}}
+@media(prefers-reduced-motion:reduce){.hero.title-cast-ready .mode-card.title-choice-selected{animation:none}.title-transition-overlay{transition-duration:.08s!important}.title-screen-enter{animation-duration:.08s!important}}
+/* Wide letterforms keep the menu playful without crossing into the paper cast. */
+.hero.title-cast-ready h1{font-family:var(--title);font-weight:900;font-size:clamp(64px,6.6vw,126px);letter-spacing:.018em;line-height:.96}
+.hero.title-cast-ready .mode-card h3{font-weight:700;font-size:27px;letter-spacing:.45px}
+.title-cast canvas{image-rendering:auto}

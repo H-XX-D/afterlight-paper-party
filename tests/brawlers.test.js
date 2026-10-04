@@ -133,7 +133,7 @@ test('all thirteen render with unique generated backgrounds and animated cutout 
   const scenes=[],characters=[],props=[];const gradient={addColorStop(){}};
   const ctx=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>(o[k]=v,true)});
   for(const d of BRAWL_GAMES){const g=createBrawl(d.id,roster(4,true),4);advance(g,130);drawBrawl(ctx,g,{background(c,id,t){scenes.push(id);assert.ok(t>0);},character(c,p,x,y,size){characters.push(size);assert.equal(typeof p.id,'string');assert.ok(Number.isFinite(x)&&Number.isFinite(y));},prop(c,name){props.push(name);}});}
-  assert.deepEqual(scenes,BRAWL_GAMES.map(g=>g.id));assert.ok(characters.filter(size=>size===72).length>=12);assert.ok(props.includes('flag'));
+  assert.deepEqual(scenes,BRAWL_GAMES.map(g=>g.id));assert.ok(characters.filter(size=>size>=84).length>=12);assert.ok(props.includes('flag'));
 });
 
 test('uppercut uses an upward hurtbox and vertical launch rather than a forward slash',()=>{

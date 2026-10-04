@@ -1,32 +1,36 @@
+import {BOARDGAME_CHALLENGES,createChallenge,stepChallenge,drawChallenge,getChallengeResults} from './boardgame-challenges.js';
 import {drawGameHUD} from './game-hud.js';
 /** Host-authoritative catalog: ten paper diversions, a contested feast and thirteen platform objectives. */
 import {BRAWL_GAMES,createBrawl,stepBrawl,drawBrawl,getBrawlResults} from './brawlers.js';
 import {GULLET_GAME,createGullet,stepGullet,drawGullet,getGulletResults} from './gullet-gala.js';
 import {sceneLighting,scenePanel,SCENE_LAYOUT} from './scene-lighting.js';
+import {initializeMinigameSurprises,prepareMinigameSurprises,finishMinigameSurprises,drawMinigameSurprises,drawMinigameSurpriseCue} from './minigame-surprises.js';
+import {configureBotDifficulty,normalizeBotDifficulty,botControl,botTarget,botTimingOffset} from './bot-difficulty.js';
 const REPLACEMENTS={"memory": "bell-breakers", "tug": "relic-launch", "fishing": "hollow-horde", "balance": "rift-ball", "sorting": "spark-heist", "reaction": "fuse-festival", "crates": "tower-relay", "cipher": "colossus-wake", "orbit": "bellows-boxing", "potato": "gullet-gala"};
+const CHALLENGE_IDS=new Set(BOARDGAME_CHALLENGES.map(game=>game.id));
 const BRAWL_IDS=new Set(BRAWL_GAMES.map(game=>game.id));
 export const MINIGAMES = [
-  ['inkfall','INKFALL','DODGE','Dodge changing gear waves; phase through danger for a risky bonus.','← → move · Space phase-dash · gear waves change every 7s',36,'gear'],
-  ['mothlight','MOTH LIGHT','COLLECT','Carry rare moths home for big bank bonuses; the roaming wisp can steal them.','Arrows move · Space banks moths at the glowing nest · avoid the red wisp',36,'spark'],
-  ['sweep','LAST TRAIN','JUMP','Read low and high ghost trains; build a clear streak through express doubles.','Space jumps LOW trains · hold ↓ under HIGH trains · express trains arrive sooner',34,'lantern'],
-  ['rhythm','PAPER PULSE','RHYTHM','Switch instruments, follow accelerating phrases, and protect your combo.','← moon / → sun instrument · Space hits matching notes · tempo accelerates',36,'orb'],
-  ['maze','BACK ALLEYS','MAZE','Timed library gates conceal a secret rune; phase through shelves to shorten your route.','Arrows move · Space phases 2 tiles · key then exit · detour for the secret rune',40,'key'],
+  ['inkfall','INKFALL','DODGE','Dodge changing gear waves; chain daring phases through the teeth to recharge your dash.','← → move · Space phase-dash · gear waves change every 7s · close phases recharge',36,'gear'],
+  ['mothlight','MOTH LIGHT','COLLECT','Flutter between rare moths, risk a heavy cargo, then bank quickly before the wisp steals it.','Arrows move · Space banks at the nest / flutters outside it · rare cargo earns more',36,'spark'],
+  ['sweep','LAST TRAIN','JUMP','Read low and high ghost trains; build streaks and risk close clears through express passes.','Space jumps LOW trains · hold ↓ under HIGH trains · close low clears earn more',34,'lantern'],
+  ['rhythm','PAPER PULSE','RHYTHM','Read changing moon/sun phrases, switch instruments, and finish clean phrases for an encore.','← moon / → sun instrument · Space hits matching notes · clean 8-note phrases earn encores',36,'orb'],
+  ['maze','BACK ALLEYS','MAZE','Hunt shifting runes, chain phases through shelves, and turn each key into a fast escape.','Arrows move · Space phases 2 tiles · key then exit · new runes recharge phase chains',40,'key'],
   ['memory','ECHO CHAMBER','MEMORY','Repeat, mirror, or reverse each crystal spell; buy a hint only when you need it.','Arrow keys echo the spell · follow NORMAL / MIRROR / REVERSE · Space hint costs 4',39,'orb'],
-  ['redlight','WATCHMAN','STEALTH','Sprint between warnings, change cover lanes, and crouch through the patrol.','↑ advance · ← → cover lane · ↓ crouch in lit cover · Space sprints on green',36,'drone'],
+  ['redlight','WATCHMAN','STEALTH','Sprint through green windows, slip into moving cover, and chain clean deliveries past the patrol.','↑ advance · ← → cover lane · ↓ crouch in lit cover · Space sprints · clean cover slips chain bonuses',36,'drone'],
   ['tug','PULL THE SUN','MASH','Swap eclipse chains when the mechanism turns; rest before its gears overheat.','← → choose chain · tap Space on the lit side · hold ↓ to cool the gears',34,'lantern'],
-  ['raft','SINKING CITY','SURVIVAL','Leap between shifting islands, brace against gusts, and risk a detour for sky shards.','← → move · Space jumps across darkness · ↓ braces against wind · gold shards +12',36,'platform'],
-  ['gallery','PAPER SNIPER','AIM','Protect blue couriers, break rotating armor, and charge shots for marked sentinels.','← → aim · tap Space fires · hold then release for armor-piercing · spare BLUE',36,'drone'],
+  ['raft','SINKING CITY','SURVIVAL','Chain landings between shifting islands, brace against gusts, and risk a detour for sky shards.','← → move · Space jumps · ↓ braces · long safe landings chain · gold shards +12',36,'platform'],
+  ['gallery','PAPER SNIPER','AIM','Thread shots past blue couriers, break rotating armor, and charge for marked sentinels.','← → aim · ↓ steady · tap Space fires · hold/release pierces armor · spare BLUE',36,'drone'],
   ['fishing','DEEP SIGNAL','TIMING','Hook a relic, fight its changing pull, and ease the line before it snaps.','Space hooks / reels · match ← → fight arrow · ↓ eases dangerous line tension',38,'key'],
   ['balance','HIGH WIRE','BALANCE','Cross the high wire during changing gusts; brace or spend your emergency catch.','← → balance · ↑ crosses for bonuses · ↓ braces · Space emergency catch',36,'umbrella'],
   ['sorting','NIGHT SHIFT','SORT','Stamp fragile parcels, beat express deadlines, and chain accurate deliveries.','← → bin · ↓ stamps FRAGILE · Space sends · ↑ reroutes for 1 point',36,'crate'],
   ['reaction','FALSE DAWN','REACTION','Select the coming sigil before dawn, then decide whether to double your wager.','← → match the sigil · Space on GOLD only · ↑ while waiting doubles the stakes',34,'spark'],
-  ['trace','CONSTELLATION','PATH','Chase drifting stars in order; focus a protective tether as comets cut your route.','Arrows move · hold Space to slow, shield and extend reach · link quickly for combos',38,'orb'],
+  ['trace','CONSTELLATION','PATH','Race drifting stars for quick-link bonuses that refill focus, then shield through crossing comets.','Arrows move · hold Space slows / shields / extends reach · quick links refill focus',38,'orb'],
   ['potato','BAD OMEN','PASS','Choose your rival, double the curse, or reflect a pass at the last moment.','← → recipient · Space passes · ↑ doubles curse · ↓ briefly reflects incoming passes',36,'orb'],
   ['crates','DEAD LETTER','PUZZLE','Return two differently marked reliquaries per room; undo only your last three mistakes.','Arrows push BOTH relics to matching seals · Space undoes a push (3 per room)',40,'crate'],
   ['orbit','MOON RUNNER','ORBIT','Switch between two moon tracks as thorns migrate and stars alternate lanes.','↑ inner / ↓ outer orbit · Space reverses · follow alternating stars and avoid thorns',36,'spike'],
   ['cipher','LOCKSMITH','CODE','Memorize a fading code, follow reversed locks, and wind the clock under pressure.','← → symbol · Space confirms · ↑ peeks for 2 points · hold ↓ to wind the timer',38,'gear'],
-  ['shadow','SHADOW PLAY','CHASE','Steal the court’s relics, bank them at the altar, and lure the keeper with a decoy.','Arrows move · Space dashes · ↓ at altar banks · ↓ + Space decoy · mist conceals',38,'lantern'],
-].map(([id,name,tag,description,instructions,duration,icon])=>({id,name,tag,description,instructions,duration,icon})).map(def=>REPLACEMENTS[def.id]?(REPLACEMENTS[def.id]==='gullet-gala'?GULLET_GAME:BRAWL_GAMES.find(g=>g.id===REPLACEMENTS[def.id])):def).concat(BRAWL_GAMES.slice(0,4));
+  ['shadow','SHADOW PLAY','CHASE','Risk a full relic cargo for a large altar bonus, then lure the keeper with a close decoy.','Arrows move · Space dash · ↓ at altar banks · ↓ + Space decoy · full cargo bonus',38,'lantern'],
+].map(([id,name,tag,description,instructions,duration,icon])=>({id,name,tag,description,instructions,duration,icon})).map(def=>REPLACEMENTS[def.id]?(REPLACEMENTS[def.id]==='gullet-gala'?GULLET_GAME:BRAWL_GAMES.find(g=>g.id===REPLACEMENTS[def.id])):def).concat(BRAWL_GAMES.slice(0,4),BOARDGAME_CHALLENGES);
 
 const TAU=Math.PI*2, W=960,H=540;
 const INK='#101215', PAPER='#e9e1cc', MUTED='#8b8b83', GOLD='#edc87c', RED='#d27568';
@@ -43,7 +47,7 @@ function cleanInput(v={}){return {left:!!v.left,right:!!v.right,up:!!v.up,down:!
 function move(p,i,dt,speed=200){const x=Number(i.right)-Number(i.left),y=Number(i.down)-Number(i.up),n=Math.hypot(x,y)||1;p.x=clamp(p.x+x/n*speed*dt,48,912);p.y=clamp(p.y+y/n*speed*dt,108,430);}
 function flash(p,message,color=GOLD){p.message=message;p.messageColor=color;p.flash=0.9;}
 function direction(i,prev){return KEYS.findIndex(k=>i[k]&&!prev[k]);}
-function mazeSetup(p){p.cx=0;p.cy=0;p.hasKey=false;p.walk=0;const targets=[{x:6,y:0},{x:6,y:6},{x:0,y:6},{x:5,y:2},{x:3,y:3},{x:0,y:0}];p.keyTile={...targets[p.level*2%6]};p.exitTile={...targets[(p.level*2+1)%6]};}
+function mazeSetup(p){p.cx=0;p.cy=0;p.hasKey=false;p.walk=0;const targets=[{x:6,y:0},{x:6,y:6},{x:0,y:6},{x:5,y:2},{x:3,y:3},{x:0,y:0}];p.keyTile={...targets[p.level*2%6]};p.exitTile={...targets[(p.level*2+1)%6]};p.huntTile={...[{x:4,y:3},{x:1,y:2},{x:5,y:5},{x:3,y:6},{x:0,y:3},{x:2,y:5}][p.level%6]};p.huntFound=false;p.phaseSeen=[];p.phaseChain=0;p.phaseWindow=0;}
 // Each block leaves a two-cell corridor around its ends. The key and exit are reachable.
 const MAZE=['0000000','0110110','0000100','0100000','0101100','0000000','0000000'];
 function crateSetup(g,p){
@@ -55,7 +59,7 @@ function syncCrates(p){const b=p.boxes.find(b=>!b.delivered)||p.boxes[0];p.crate
 function cipherSetup(g,p){p.code=[pick(g,5),pick(g,5),pick(g,5)];p.order=p.level%2?[2,1,0]:[0,1,2];p.dial=0;p.symbol=0;p.lockClock=10;p.reveal=3;}
 function rhythmTime(beat){let time=.8;for(let j=0;j<beat;j++)time+=Math.max(.38,.65-Math.floor(j/8)*.055);return time;}
 function rhythmNearest(t){let beat=0;while(beat<100&&rhythmTime(beat+1)<t)beat++;return Math.abs(rhythmTime(beat+1)-t)<Math.abs(rhythmTime(beat)-t)?beat+1:beat;}
-function rhythmLane(beat){return Math.floor(beat/2)%2;}
+function rhythmLane(beat){if(beat<24)return Math.floor(beat/2)%2;const phrase=Math.floor(beat/8)%3,index=beat%8;return [[0,1,0,1,1,0,1,0],[1,1,0,1,0,0,1,0],[0,0,1,0,1,1,0,1]][phrase][index];}
 function memoryAnswer(p){const index=p.cycle%3===2?p.sequence.length-1-p.answer:p.answer;return (p.sequence[index]+(p.cycle%3===1?2:0))%4;}
 function nextParcel(g,p){p.parcel=pick(g,3);p.fragile=pick(g,3)===0;p.stamped=false;p.deadline=3.8+random(g)*2;p.express=pick(g,3)===0;}
 const NEST={x:480,y:403},ALTAR={x:480,y:408};
@@ -63,23 +67,25 @@ const MAZE_GATES=[{x:3,y:0},{x:6,y:3},{x:2,y:5}];
 function gateClosed(g,x,y){const gate=MAZE_GATES.findIndex(v=>v.x===x&&v.y===y);return gate>=0&&(Math.floor(g.time/2)+gate)%3===0;}
 function tracePoint(g,p,index=p.node){const q=p.route[index];return {x:clamp(q.x+Math.sin(g.time*.8+index+p.slot)*13,65,900),y:clamp(q.y+Math.cos(g.time*.65+index)*10,143,425)};}
 function hiddenInCourt(p){return [{x:185,y:235},{x:775,y:310}].some(z=>dist(z,p)<42);}
-export function createGame(id,players,seed=1){
+export function createGame(id,players,seed=1,options={}){
  const def=MINIGAMES.find(m=>m.id===id);if(!def)throw new Error(`Unknown minigame: ${id}`);if(!players?.length||players.length>4)throw new Error('Minigames require 1–4 players');
- if(id==='gullet-gala')return createGullet(players,seed);
- if(BRAWL_IDS.has(id))return createBrawl(id,players,seed);
+ const botOptions={difficulty:normalizeBotDifficulty(typeof options==='string'?options:options?.difficulty)};
+ if(CHALLENGE_IDS.has(id))return initializeMinigameSurprises(createChallenge(id,players,seed,botOptions),seed);
+ if(id==='gullet-gala')return initializeMinigameSurprises(createGullet(players,seed,botOptions),seed);
+ if(BRAWL_IDS.has(id))return initializeMinigameSurprises(createBrawl(id,players,seed,botOptions),seed);
  const g={id,time:0,duration:def.duration,done:false,rng:(seed>>>0)||1,players:players.map((p,j)=>({id:p.id,name:p.name,character:p.character,bot:!!p.bot,slot:j,score:0,x:players.length===1?480:160+j*640/(players.length-1),y:390,prev:cleanInput(),cooldown:0,flash:0,walk:0,level:0,botClock:0,combo:0,ability:0,guard:0})),state:{objects:[],timer:0,round:0,beat:0}};
  const s=g.state;
  for(const p of g.players){p.color=COLORS[p.slot];
   switch(id){
    case 'inkfall':p.dash=0;p.dashDir=1;break;
-   case 'mothlight':p.carry=0;p.banked=0;p.boost=0;break;
+   case 'mothlight':p.carry=0;p.banked=0;p.boost=0;p.rareCargo=0;p.lastCatch=-10;break;
    case 'sweep':p.jump=0;p.vy=0;p.lastSweep=-1;p.duck=false;break;
-   case 'rhythm':p.lastBeat=-1;p.track=0;p.judgedBeat=-1;break;
+   case 'rhythm':p.lastBeat=-1;p.track=0;p.judgedBeat=-1;p.phrase=-1;p.phraseHits=0;p.phrasePerfect=0;p.encores=0;p.echoAt=0;p.echoBeat=-1;p.echoClaimed=-1;break;
    case 'maze':mazeSetup(p);p.facing=1;p.rune=0;break;
    case 'memory':p.sequence=[pick(g,4),pick(g,4),pick(g,4)];p.answer=0;p.cycle=-1;p.hint=0;break;
-   case 'redlight':p.progress=0;p.lane=1;p.alert=0;break;
+   case 'redlight':p.progress=0;p.lane=1;p.alert=0;p.coverPhase=-1;p.deliveries=0;p.cleanChain=0;break;
    case 'tug':p.heat=0;p.grip=0;p.jammed=0;break;
-   case 'raft':p.x=480;p.safe=true;p.jump=0;break;
+   case 'raft':p.x=480;p.safe=true;p.jump=0;p.takeoffX=480;break;
    case 'gallery':p.aim=.5;p.charge=0;break;
    case 'fishing':p.phase=random(g)*TAU;p.arc=random(g)*TAU;p.hooked=false;p.reel=0;p.tension=.25;p.fight=1;break;
    case 'balance':p.lean=(random(g)-.5)*.2;p.velocity=0;p.crossing=0;break;
@@ -103,7 +109,7 @@ export function createGame(id,players,seed=1){
  if(id==='potato'){s.holder=0;s.fuse=3.4+random(g)*1.5;s.passes=0;s.jinx=1;s.lastFrom=-1;}
  if(id==='trace')s.comets=[{x:60,y:230,vx:106},{x:890,y:350,vx:-91}];
  if(id==='shadow'){s.seeker={x:480,y:140};s.target=0;s.decoys=[];s.relics=Array.from({length:3},(_,j)=>({x:150+j*320,y:150+random(g)*220}));}
- return g;
+ return initializeMinigameSurprises(configureBotDifficulty(g,botOptions,seed),seed);
 }
 function steer(i,p,t,dead=6){i.left=p.x>t.x+dead;i.right=p.x<t.x-dead;i.up=p.y>t.y+dead;i.down=p.y<t.y-dead;return i;}
 function gridRoute(sx,sy,tx,ty,size,blocked){const queue=[[sx,sy,null]],seen=new Set([`${sx},${sy}`]);while(queue.length){const [x,y,first]=queue.shift();if(x===tx&&y===ty)return first;for(let d=0;d<4;d++){const nx=x+DIRS[d][0],ny=y+DIRS[d][1],key=`${nx},${ny}`;if(nx>=0&&nx<size&&ny>=0&&ny<size&&!blocked(nx,ny)&&!seen.has(key)){seen.add(key);queue.push([nx,ny,first===null?d:first]);}}}return null;}
@@ -112,36 +118,92 @@ function botInput(g,p,dt){
  const i=cleanInput(),s=g.state,t=g.time;p.botClock+=dt;const pulse=(period=.19)=>Math.floor(p.botClock/period)%2===0;
  switch(g.id){
   case 'inkfall':{const danger=s.objects.filter(o=>o.y>180&&o.y<415).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];if(danger&&Math.abs(danger.x-p.x)<85){i.left=p.x>480?danger.x>=p.x:danger.x>p.x;i.right=!i.left;if(p.x<90){i.left=false;i.right=true;}if(p.x>870){i.left=true;i.right=false;}i.action=danger.y>335&&p.ability<=0;}break;}
-  case 'mothlight':{const o=p.carry>=3||g.duration-t<5?NEST:[...s.objects].sort((a,b)=>dist(a,p)/a.value-dist(b,p)/b.value)[0];if(o)steer(i,p,o);i.action=p.carry>0&&dist(p,NEST)<63;break;}
+  case 'mothlight':{const o=p.carry>=3||g.duration-t<5?NEST:[...s.objects].sort((a,b)=>dist(a,p)/a.value-dist(b,p)/b.value)[0];if(o)steer(i,p,botTarget(g,p,o));i.action=p.carry>0&&dist(p,NEST)<63;break;}
   case 'sweep':i.down=s.height==='high'&&s.next-t<.8;i.action=s.height==='low'&&s.next-t<.32&&s.next-t>.1&&(s.count+p.slot)%8!==5;break;
-  case 'rhythm':{const b=rhythmNearest(t),lane=rhythmLane(b);i.left=p.track>lane;i.right=p.track<lane;i.action=(b+p.slot)%9!==7&&Math.abs(t-rhythmTime(b)-.01*p.slot)<.022;break;}
+  case 'rhythm':{const b=rhythmNearest(t),echo=p.echoAt>0&&t<p.echoAt+.1&&t>p.echoAt-.13&&p.echoClaimed!==p.echoBeat,lane=echo?1-rhythmLane(p.echoBeat):rhythmLane(b);i.left=p.track>lane;i.right=p.track<lane;i.action=echo?Math.abs(t-p.echoAt-.01*p.slot-botTimingOffset(g,p,`echo${p.echoBeat}`))<.027:(b+p.slot)%9!==7&&Math.abs(t-rhythmTime(b)-.01*p.slot-botTimingOffset(g,p,b))<.027;break;}
   case 'maze':{const route=mazeNext(p);if(route!==null&&Math.floor(t*5+p.slot)%3!==2)i[KEYS[route]]=true;if(route!==null&&gateClosed(g,p.cx+DIRS[route][0],p.cy+DIRS[route][1]))i.action=p.ability<=0;break;}
   case 'memory':if(t%6.5>3.15&&p.answer<p.sequence.length)i[KEYS[memoryAnswer(p)]]=pulse(.17);break;
   case 'redlight':{const cover=(s.phase+p.slot)%3;i.left=p.lane>cover&&pulse(.12);i.right=p.lane<cover&&pulse(.12);i.up=s.green&&s.timer>.2;i.down=!s.green;i.action=s.green&&s.timer>.7&&p.ability<=0;break;}
   case 'tug':{const grip=Math.floor(t/4)%2;i.left=p.grip>grip;i.right=p.grip<grip;i.down=p.heat>.72;i.action=!i.down&&p.jammed<=0&&pulse(.14+p.slot*.01);break;}
   case 'raft':{const target=120+(s.warning?s.upcoming:s.safe)*180;i.left=p.x>target+13;i.right=p.x<target-13;i.action=!p.safe&&p.ability<=0;i.down=!i.left&&!i.right;break;}
-  case 'gallery':{const o=[...s.objects.slice(p.slot),...s.objects.slice(0,p.slot)].find(o=>o.respawn<=0&&!o.friendly&&o.open);if(o){const x=60+p.aim*840;i.left=x>o.x+11;i.right=x<o.x-11;i.action=Math.abs(x-o.x)<23&&pulse(.16);}break;}
+  case 'gallery':{const o=[...s.objects.slice(p.slot),...s.objects.slice(0,p.slot)].find(o=>o.respawn<=0&&!o.friendly&&o.open);if(o){const x=60+p.aim*840,perceived=botTarget(g,p,o);i.left=x>perceived.x+11;i.right=x<perceived.x-11;i.action=Math.abs(x-o.x)<23&&pulse(.16);}break;}
   case 'fishing':if(!p.hooked)i.action=angleGap(p.phase,p.arc)<.18&&p.cooldown<=0;else{i.left=p.fight<0;i.right=p.fight>0;i.down=p.tension>.65;i.action=!i.down&&pulse(.18);}break;
   case 'balance':i.left=p.lean+p.velocity*.6>.02;i.right=p.lean+p.velocity*.6<-.02;i.up=Math.abs(p.lean)<.5;i.down=Math.abs(p.lean)>.62;i.action=Math.abs(p.lean)>.75&&p.ability<=0;break;
   case 'sorting':i.left=p.bin>p.parcel&&pulse(.13);i.right=p.bin<p.parcel&&pulse(.13);i.down=p.fragile&&!p.stamped;i.action=p.bin===p.parcel&&(!p.fragile||p.stamped)&&pulse(.18);break;
   case 'reaction':i.left=p.choice>s.symbol&&pulse(.12);i.right=p.choice<s.symbol&&pulse(.12);i.action=s.signal==='go'&&p.choice===s.symbol&&t-s.signalTime>.19+p.slot*.03&&p.answered!==s.round;break;
-  case 'trace':{const target=tracePoint(g,p);steer(i,p,target);i.action=dist(p,target)<62&&p.focus>.25;break;}
+  case 'trace':{const target=tracePoint(g,p);steer(i,p,botTarget(g,p,target));i.action=dist(p,target)<62&&p.focus>.25;break;}
   case 'potato':i.action=s.holder===p.slot&&p.cooldown<=0&&pulse(.24);i.down=s.holder!==p.slot&&s.fuse<.8&&p.ability<=0;i.up=s.holder===p.slot&&s.fuse>2.2&&p.score>4&&pulse(.37);break;
   case 'crates':{const b=p.boxes.find(v=>!v.delivered);if(b){const dx=Math.sign(b.tx-b.x),dy=Math.sign(b.ty-b.y),tx=b.x-dx,ty=b.y-dy;if(p.cx===tx&&p.cy===ty){i.left=dx<0;i.right=dx>0;i.up=dy<0;i.down=dy>0;}else{const route=gridRoute(p.cx,p.cy,tx,ty,5,(x,y)=>p.boxes.some(q=>q.x===x&&q.y===y)||p.walls.some(q=>q.x===x&&q.y===y));if(route!==null)i[KEYS[route]]=true;}}break;}
   case 'orbit':i.up=p.sparkLane===1&&p.orbitLane!==1;i.down=p.sparkLane===0&&p.orbitLane!==0;i.action=p.orbitLane===p.thornLane&&angleGap(p.angle+p.dir*.37,p.thorn)<.2;break;
   case 'cipher':i.right=p.symbol!==p.code[p.order[p.dial]]&&pulse(.12);i.action=p.symbol===p.code[p.order[p.dial]]&&pulse(.21);i.down=p.lockClock<2;break;
-  case 'shadow':{const target=p.relics>=2||g.duration-t<4?ALTAR:[...s.relics].sort((a,b)=>dist(a,p)-dist(b,p))[0];steer(i,p,target);i.action=dist(p,s.seeker)<155&&p.cooldown<=0;if(dist(p,ALTAR)<52&&p.relics>0)i.down=true;if(dist(p,s.seeker)<90&&p.cooldown>.3&&p.ability<=0){i.down=true;i.action=pulse(.16);}break;}
+  case 'shadow':{let target=p.relics>=2||g.duration-t<4?ALTAR:[...s.relics].sort((a,b)=>dist(a,p)-dist(b,p))[0];const danger=dist(p,s.seeker);if(g.botDifficulty&&danger<105&&p.cooldown>.25&&p.ability>0)target={x:clamp(p.x+(p.x-s.seeker.x)*2,65,895),y:clamp(p.y+(p.y-s.seeker.y)*2,145,420)};steer(i,p,botTarget(g,p,target));i.action=danger<155&&p.cooldown<=0&&(g.botDifficulty?pulse(.12):true);if(g.botDifficulty&&i.action)i.down=false;if(dist(p,ALTAR)<52&&p.relics>0)i.down=true;if(danger<90&&p.cooldown>.3&&p.ability<=0){i.down=true;i.action=pulse(.16);}break;}
  }
  return i;
 }
 function fireGallery(g,p,charged){const s=g.state;p.shot=60+p.aim*840;p.shotTime=g.time;p.cooldown=charged?.6:.24;const targets=s.objects.filter(o=>o.respawn<=0&&Math.abs(o.x-p.shot)<(charged?52:28)).sort((a,b)=>b.y-a.y);let hits=0;
- for(const o of targets){if(!charged&&hits)break;if(o.friendly){p.score=Math.max(0,p.score-7);p.combo=0;flash(p,'COURIER! −7',RED);o.respawn=1.2;hits++;}else if(o.open||charged){const reward=(o.marked?12:7)+(charged?5:0)+Math.min(6,p.combo);p.score+=reward;p.combo++;o.respawn=.85;hits++;flash(p,`HIT +${reward}`);}else{flash(p,'ARMORED — CHARGE',RED);}}
+ for(const o of targets){if(!charged&&hits)break;if(o.friendly){p.score=Math.max(0,p.score-7);p.combo=0;flash(p,'COURIER! −7',RED);o.respawn=1.2;hits++;}else if(o.open||charged){const thread=g.time>8&&s.objects.some(q=>q.friendly&&q.respawn<=0&&Math.abs(q.x-p.shot)<85&&Math.abs(q.x-p.shot)>(charged?52:28)),reward=(o.marked?12:7)+(charged?5:0)+Math.min(6,p.combo)+(thread?3:0)+(g.time>8&&charged&&!o.open?4:0);p.score+=reward;p.combo++;o.respawn=.85;hits++;flash(p,`${thread?'THREAD SHOT':charged&&!o.open?'ARMOR BREAK':'HIT'} +${reward}`);}else{flash(p,'ARMORED — CHARGE',RED);}}
  if(!hits){p.combo=0;p.score=Math.max(0,p.score-1);flash(p,'MISS',RED);}}
+function stepRhythm(g,p,hit,di){
+ const t=g.time,beat=rhythmNearest(t),phrase=Math.floor(beat/8),err=Math.abs(t-rhythmTime(beat));
+ if(p.phrase!==phrase){p.phrase=phrase;p.phraseHits=0;p.phrasePerfect=0;p.phraseMiss=false;}
+ if(di===1)p.track=1;if(di===3)p.track=0;
+ if(p.echoAt>0&&t>p.echoAt+.12)p.echoAt=0;
+ const echo=hit&&p.echoAt>0&&p.echoClaimed!==p.echoBeat&&Math.abs(t-p.echoAt)<.12&&p.track===1-rhythmLane(p.echoBeat);
+ if(echo){p.echoClaimed=p.echoBeat;p.score+=6;p.combo++;flash(p,'ECHO ANSWER +6');}
+ if(hit&&!echo){
+  if(beat!==p.lastBeat&&err<.18&&p.track===rhythmLane(beat)){
+   p.combo++;p.phraseHits++;if(err<.08)p.phrasePerfect++;
+   const reward=(err<.08?5:3)+Math.min(5,Math.floor(p.combo/4));p.score+=reward;p.lastBeat=beat;
+   if(g.surprises?.active?.kind==='moon-bloom'){p.echoAt=rhythmTime(beat)+.26;p.echoBeat=beat;}
+   if(t>8&&beat%8===7&&p.phraseHits===8&&!p.phraseMiss){const encore=14+(p.phrasePerfect>=6?4:0);p.encores++;p.score+=encore;flash(p,`CLEAN PHRASE · ENCORE +${encore}`);}
+   else flash(p,`${err<.08?'PERFECT':'GOOD'} ×${p.combo} +${reward}`);
+  }else{p.combo=0;p.phraseMiss=true;p.score=Math.max(0,p.score-2);flash(p,p.track!==rhythmLane(beat)?'WRONG INSTRUMENT':'OFF BEAT',RED);}
+ }
+ const passed=beat-(t<rhythmTime(beat)+.19?1:0);
+ if(passed>p.judgedBeat){if(passed>p.lastBeat){p.combo=0;if(Math.floor(passed/8)===phrase)p.phraseMiss=true;}p.judgedBeat=passed;}
+}
+function stepMaze(g,p,i,hit,dt){
+ const d=KEYS.findIndex(k=>i[k]);if(d>=0)p.facing=d;const lively=g.time>8;
+ if(hit&&p.ability<=0){
+  const [dx,dy]=DIRS[p.facing],x=p.cx+dx*2,y=p.cy+dy*2,mx=p.cx+dx,my=p.cy+dy;
+  if(x>=0&&x<7&&y>=0&&y<7&&MAZE[y][x]==='0'){
+   const crossing=MAZE[my][mx]==='1'||gateClosed(g,mx,my),landing=`${x},${y}`;
+   p.cx=x;p.cy=y;p.ability=lively?3:4;p.walk=.2;
+   if(lively&&crossing&&p.phaseSeen.length<3&&!p.phaseSeen.includes(landing)){
+    p.phaseSeen.push(landing);p.phaseChain=p.phaseWindow>0?p.phaseChain+1:1;p.phaseWindow=4;p.ability=2.2;
+    const reward=3+Math.min(3,p.phaseChain)*2;p.score+=reward;flash(p,`SHELF CHAIN ×${p.phaseChain} +${reward}`);
+   }else flash(p,'PHASE STEP');
+  }
+ }
+ if(p.walk<=0&&d>=0){const x=p.cx+DIRS[d][0],y=p.cy+DIRS[d][1];if(x>=0&&x<7&&y>=0&&y<7&&MAZE[y][x]==='0'&&!gateClosed(g,x,y)){p.cx=x;p.cy=y;p.walk=.13;}}
+ if(p.cx===2&&p.cy===5&&p.rune===0){p.rune=1;p.score+=12;flash(p,'SECRET RUNE +12');}
+ if(lively&&!p.huntFound&&p.cx===p.huntTile.x&&p.cy===p.huntTile.y){p.huntFound=true;p.score+=14;p.ability=0;p.phaseWindow=4;flash(p,'RUNE HUNT +14 · PHASE READY');}
+ if(p.cx===p.keyTile.x&&p.cy===p.keyTile.y&&!p.hasKey){p.hasKey=true;const reward=10+(lively&&p.phaseWindow>0?4:0);p.score+=reward;if(lively)p.ability=Math.max(0,p.ability-1.2);flash(p,`KEY +${reward}`);}
+ if(p.cx===p.exitTile.x&&p.cy===p.exitTile.y&&p.hasKey){const reward=25+(lively?Math.min(9,p.phaseChain*3):0);p.score+=reward;p.level++;mazeSetup(p);p.rune=0;flash(p,`ESCAPED +${reward}`);}
+}
+function stepWatchman(g,p,i,hit,di,dt){
+ const s=g.state,lively=g.time>8;
+ if(di===1)p.lane=Math.min(2,p.lane+1);if(di===3)p.lane=Math.max(0,p.lane-1);
+ const cover=p.lane===(s.phase+p.slot)%3&&i.down;
+ p.alert=Math.max(0,p.alert-dt*(cover?(lively?1.1:.6):.1));
+ // Every patrol creates one cover-slip opportunity. A late crouch cannot
+ // repeatedly farm the same window; a mistake resets the delivery chain.
+ if(lively&&!s.green&&cover&&p.coverPhase!==s.phase&&s.timer>.3){
+  p.coverPhase=s.phase;p.cleanChain=Math.min(5,p.cleanChain+1);p.progress+=4;p.score+=2+p.cleanChain;flash(p,`COVER SLIP ×${p.cleanChain}`);
+ }
+ if(hit&&s.green&&p.ability<=0){const distance=lively?18:12;p.progress+=distance;p.alert+=lively?.3:.25;p.ability=lively?1.8:2.8;flash(p,`SPRINT +${distance}m`);}
+ if(i.up){
+  if(s.green||cover){p.progress+=dt*(cover?(lively?12:6):(lively?19:15));p.score+=dt*(cover?(lively?2.4:1.4):3);}
+  else{p.cleanChain=0;p.alert+=dt*1.2;p.progress=Math.max(0,p.progress-dt*25);p.score=Math.max(0,p.score-dt*9);if(p.cooldown<=0){flash(p,'SEEN — SEEK COVER',RED);p.cooldown=.8;}}
+ }
+ if(p.alert>=1){p.cleanChain=0;p.progress=Math.max(0,p.progress-18);p.score=Math.max(0,p.score-6);p.alert=.2;flash(p,'ALARM −6',RED);}
+ if(p.progress>=100){const reward=25+(lively?Math.min(15,p.cleanChain*3):0);p.progress-=100;p.score+=reward;p.deliveries++;flash(p,`DELIVERED +${reward}`);}
+}
 function sharedWorld(g,dt){const s=g.state,t=g.time;
  if(g.id==='inkfall'){s.wave=Math.floor(t/7)%3;s.press=(t%7)/7;s.timer-=dt;if(s.timer<=0){s.timer=[.36,.2,.54][s.wave];const safe=110+(Math.floor(t/7)%5)*175;const count=s.wave===2?4:1;for(let n=0;n<count;n++){let x=s.wave===2?90+n*245:55+random(g)*850;if(s.wave===2&&Math.abs(x-safe)<115)x+=130;s.objects.push({x:clamp(x,50,910),y:65,speed:125+random(g)*80+s.wave*37,r:17+random(g)*11,spin:random(g)*TAU});}}for(const o of s.objects)o.y+=o.speed*dt;s.objects=s.objects.filter(o=>o.y<480);}
  if(g.id==='mothlight'){s.wisp.x=480+Math.sin(t*.8)*350;s.wisp.y=260+Math.cos(t*1.2)*100;for(const o of s.objects){o.x=clamp(o.x+Math.sin(t*1.4+o.phase)*dt*22,65,895);o.y=clamp(o.y+Math.cos(t+o.phase)*dt*13,145,416);}}
- if(g.id==='sweep'&&t>=s.next){for(const p of g.players){const clear=s.height==='high'?p.duck&&p.jump<8:p.jump>28;if(clear){p.combo++;const reward=10+Math.min(8,(p.combo-1)*2);p.score+=reward;flash(p,`CLEAR +${reward}`);}else{p.combo=0;p.score=Math.max(0,p.score-5);flash(p,'CLIPPED −5',RED);}}s.count++;s.height=s.count%3===1?'high':'low';s.express=s.count%4===3;s.next=t+(s.express?.92:Math.max(1.15,1.75-s.count*.025)+random(g)*.4);}
- if(g.id==='redlight'){s.timer-=dt;if(s.timer<=0){s.green=!s.green;s.timer=s.green?1.2+random(g)*1.25:.9+random(g)*1.2;s.phase++;}}
+ if(g.id==='sweep'&&t>=s.next){for(const p of g.players){const clear=s.height==='high'?p.duck&&p.jump<8:p.jump>28;if(clear){p.combo++;const close=t>8&&s.height==='low'&&p.jump<60,reward=10+Math.min(8,(p.combo-1)*2)+(close?4:0);p.score+=reward;flash(p,`${close?'CLOSE CLEAR':'CLEAR'} +${reward}`);}else{p.combo=0;p.score=Math.max(0,p.score-5);flash(p,'CLIPPED −5',RED);}}s.count++;s.height=s.count%3===1?'high':'low';s.express=s.count%4===3;s.next=t+(s.express?.92:Math.max(1.15,1.75-s.count*.025)+random(g)*.4);}
+ if(g.id==='redlight'){s.timer-=dt;if(s.timer<=0){s.green=!s.green;s.timer=t>8?(s.green?1.05+random(g)*.7:.65+random(g)*.6):(s.green?1.2+random(g)*1.25:.9+random(g)*1.2);s.phase++;}}
  if(g.id==='raft'){s.next-=dt;s.shardTimer=Math.max(0,s.shardTimer-dt);s.warning=s.next<.9;s.wind=Math.sin(t*.9)*35*(Math.floor(t/6)%2?1:0);if(s.next<=0){s.previous=s.safe;s.safe=s.upcoming;s.upcoming=pick(g,5);s.next=2.65;s.warning=false;}}
  if(g.id==='gallery')for(const o of s.objects){o.respawn=Math.max(0,o.respawn-dt);o.x+=o.speed*dt*(1+Math.floor(t/9)*.13);o.y=165+(o.id%3)*48+Math.sin(t*1.3+o.id)*18;o.open=(t+o.id*.57)%2.4<1.65;o.marked=!o.friendly&&o.id===Math.floor(t/5)%4;if(o.x<75||o.x>885){o.speed*=-1;o.x=clamp(o.x,75,885);}}
  if(g.id==='reaction'&&t>=s.next){s.round++;if(s.signal==='wait'){s.signal=random(g)>.35?'go':'fake';s.signalTime=t;s.next=t+.66;}else{s.signal='wait';s.symbol=pick(g,3);s.next=t+.75+random(g)*1.4;}}
@@ -150,38 +212,46 @@ function sharedWorld(g,dt){const s=g.state,t=g.time;
  if(g.id==='shadow'){s.decoys=s.decoys.filter(d=>(d.life-=dt)>0);s.timer-=dt;if(s.timer<=0){const visible=g.players.filter(p=>!hiddenInCourt(p));const targets=visible.length?visible:g.players;s.target=[...targets].sort((a,b)=>(b.relics*70-dist(b,s.seeker))-(a.relics*70-dist(a,s.seeker)))[0].slot;s.timer=.7;}const actor=g.players[s.target],target=s.decoys.length?s.decoys[s.decoys.length-1]:actor;if(!hiddenInCourt(actor)||s.decoys.length){const d=dist(target,s.seeker)||1,speed=s.decoys.length?150:119+actor.relics*14;s.seeker.x+=(target.x-s.seeker.x)/d*speed*dt;s.seeker.y+=(target.y-s.seeker.y)/d*speed*dt;}}
 }
 export function stepGame(g,inputs={},dt=1/60){
+ if(g.done||!Number.isFinite(dt)||dt<=0)return g;
+ dt=Math.min(dt,.05);const before=g.players.map(p=>p.score);
+ prepareMinigameSurprises(g,Math.min(dt,Math.max(0,g.duration-g.time)));
+ stepCoreGame(g,inputs,dt);
+ finishMinigameSurprises(g,before,dt);return g;
+}
+function stepCoreGame(g,inputs={},dt=1/60){
+ if(CHALLENGE_IDS.has(g.id))return stepChallenge(g,inputs,dt);
  if(g.id==='gullet-gala')return stepGullet(g,inputs,dt);
  if(BRAWL_IDS.has(g.id))return stepBrawl(g,inputs,dt);if(g.done)return g;if(!Number.isFinite(dt)||dt<=0)return g;dt=Math.min(dt,.05);g.time=Math.min(g.duration,g.time+dt);const s=g.state,t=g.time;
- for(const p of g.players){for(const key of ['cooldown','flash','walk','ability','guard'])p[key]=Math.max(0,p[key]-dt);}
+ for(const p of g.players){for(const key of ['cooldown','flash','walk','ability','guard'])p[key]=Math.max(0,p[key]-dt);if(g.id==='maze')p.phaseWindow=Math.max(0,p.phaseWindow-dt);}
  sharedWorld(g,dt);
- for(const p of g.players){const i=p.bot?botInput(g,p,dt):cleanInput(inputs[p.id]),hit=i.action&&!p.prev.action,release=!i.action&&p.prev.action,di=direction(i,p.prev),horizontal=Number(i.right)-Number(i.left);
+ for(const p of g.players){const i=p.bot?botControl(g,p,botInput(g,p,dt),dt,g.id==='rhythm'||g.id==='sweep'?'timing':g.id==='maze'?'grid':'movement'):cleanInput(inputs[p.id]),hit=i.action&&!p.prev.action,release=!i.action&&p.prev.action,di=direction(i,p.prev),horizontal=Number(i.right)-Number(i.left);
   switch(g.id){
-   case 'inkfall':{if(hit&&p.ability<=0){p.dash=.22;p.dashDir=horizontal||p.dashDir;p.ability=2.2;flash(p,'PHASE DASH');}p.dash=Math.max(0,p.dash-dt);p.x=clamp(p.x+(p.dash>0?p.dashDir*670:horizontal*255)*dt,50,910);p.score+=dt*(2.5+s.wave*.4);if(p.cooldown<=0&&p.dash<=0&&s.objects.some(o=>Math.abs(o.x-p.x)<o.r+17&&Math.abs(o.y-400)<o.r+21)){p.score=Math.max(0,p.score-6);p.cooldown=.85;p.combo=0;flash(p,'HIT −6',RED);}else if(p.dash>0&&s.objects.some(o=>Math.abs(o.x-p.x)<34&&Math.abs(o.y-400)<35)&&p.guard<=0){p.score+=4;p.guard=.4;flash(p,'THROUGH THE TEETH +4');}break;}
-   case 'mothlight':{move(p,i,dt,p.carry>5?173:208);for(const o of s.objects)if(dist(p,o)<29&&p.carry<9){p.carry=Math.min(9,p.carry+o.value);p.score+=1;flash(p,`CARRY ${p.carry} — BANK IT`);o.x=65+random(g)*830;o.y=150+random(g)*260;}if(hit&&dist(p,NEST)<67&&p.carry>0){const reward=p.carry*4+(p.carry>=5?8:0);p.score+=reward;p.banked+=p.carry;p.carry=0;flash(p,`BANKED +${reward}`);}if(dist(p,s.wisp)<32&&p.cooldown<=0&&p.carry>0){const lost=Math.min(3,p.carry);p.carry-=lost;p.cooldown=1.5;flash(p,`WISP STOLE ${lost}`,RED);}break;}
+   case 'inkfall':{if(hit&&p.ability<=0){p.dash=.22;p.dashDir=horizontal||p.dashDir;p.ability=2.2;flash(p,'PHASE DASH');}p.dash=Math.max(0,p.dash-dt);p.x=clamp(p.x+(p.dash>0?p.dashDir*670:horizontal*255)*dt,50,910);p.score+=dt*(2.5+s.wave*.4);if(p.cooldown<=0&&p.dash<=0&&s.objects.some(o=>Math.abs(o.x-p.x)<o.r+17&&Math.abs(o.y-400)<o.r+21)){p.score=Math.max(0,p.score-6);p.cooldown=.85;p.combo=0;flash(p,'HIT −6',RED);}else if(p.dash>0&&s.objects.some(o=>Math.abs(o.x-p.x)<34&&Math.abs(o.y-400)<35)&&p.guard<=0){p.combo++;const reward=4+(t>8?Math.min(6,p.combo*2):0);p.score+=reward;p.guard=.4;if(t>8)p.ability=Math.max(.5,p.ability-.9);flash(p,`TEETH CHAIN ×${p.combo} +${reward}`);}break;}
+   case 'mothlight':{p.boost=Math.max(0,p.boost-dt);if(t>8&&hit&&dist(p,NEST)>=67&&p.ability<=0){p.boost=.32;p.ability=2.5;flash(p,'LANTERN FLUTTER');}move(p,i,dt,p.boost>0?330:p.carry>5?173:208);for(const o of s.objects)if(dist(p,o)<29&&p.carry<9){p.carry=Math.min(9,p.carry+o.value);p.score+=1;if(t>8&&o.value>1)p.rareCargo++;p.lastCatch=t;flash(p,`CARRY ${p.carry} — BANK IT`);o.x=65+random(g)*830;o.y=150+random(g)*260;}if(hit&&dist(p,NEST)<67&&p.carry>0){const bonus=t>8?p.rareCargo*4+(t-p.lastCatch<2.5?4:0):0,reward=p.carry*4+(p.carry>=5?8:0)+bonus;p.score+=reward;p.banked+=p.carry;p.carry=0;p.rareCargo=0;flash(p,`BANKED +${reward}`);}if(dist(p,s.wisp)<32&&p.cooldown<=0&&p.carry>0){const lost=Math.min(3,p.carry);p.carry-=lost;p.rareCargo=Math.max(0,p.rareCargo-1);p.cooldown=1.5;flash(p,`WISP STOLE ${lost}`,RED);}break;}
    case 'sweep':p.duck=i.down;if(hit&&p.jump===0&&!p.duck)p.vy=390;if(p.vy||p.jump){p.jump+=p.vy*dt;p.vy-=1050*dt;if(p.jump<0){p.jump=0;p.vy=0;}}break;
-   case 'rhythm':{if(di===1)p.track=1;if(di===3)p.track=0;const beat=rhythmNearest(t),err=Math.abs(t-rhythmTime(beat));if(hit){if(beat!==p.lastBeat&&err<.18&&p.track===rhythmLane(beat)){p.combo++;const reward=(err<.08?5:3)+Math.min(5,Math.floor(p.combo/4));p.score+=reward;p.lastBeat=beat;flash(p,`${err<.08?'PERFECT':'GOOD'} ×${p.combo} +${reward}`);}else{p.combo=0;p.score=Math.max(0,p.score-2);flash(p,p.track!==rhythmLane(beat)?'WRONG INSTRUMENT':'OFF BEAT',RED);}}const passed=beat-(t<rhythmTime(beat)+.19?1:0);if(passed>p.judgedBeat){if(passed>p.lastBeat)p.combo=0;p.judgedBeat=passed;}break;}
-   case 'maze':{const d=KEYS.findIndex(k=>i[k]);if(d>=0)p.facing=d;if(hit&&p.ability<=0){const [dx,dy]=DIRS[p.facing],x=p.cx+dx*2,y=p.cy+dy*2;if(x>=0&&x<7&&y>=0&&y<7&&MAZE[y][x]==='0'){p.cx=x;p.cy=y;p.ability=4;p.walk=.2;flash(p,'PHASE STEP');}}if(p.walk<=0&&d>=0){const x=p.cx+DIRS[d][0],y=p.cy+DIRS[d][1];if(x>=0&&x<7&&y>=0&&y<7&&MAZE[y][x]==='0'&&!gateClosed(g,x,y)){p.cx=x;p.cy=y;p.walk=.13;}}if(p.cx===2&&p.cy===5&&p.rune===0){p.rune=1;p.score+=12;flash(p,'SECRET RUNE +12');}if(p.cx===p.keyTile.x&&p.cy===p.keyTile.y&&!p.hasKey){p.hasKey=true;p.score+=10;flash(p,'KEY +10');}if(p.cx===p.exitTile.x&&p.cy===p.exitTile.y&&p.hasKey){p.score+=25;p.level++;mazeSetup(p);p.rune=0;flash(p,'ESCAPED +25');}break;}
+   case 'rhythm':stepRhythm(g,p,hit,di);break;
+   case 'maze':stepMaze(g,p,i,hit,dt);break;
    case 'memory':{const cycle=Math.floor(t/6.5),phase=t%6.5;if(cycle!==p.cycle){p.cycle=cycle;p.answer=0;p.hint=0;if(cycle>0)p.sequence=Array.from({length:3+Math.min(2,cycle)},()=>pick(g,4));}p.hint=Math.max(0,p.hint-dt);if(hit&&phase>=3&&p.answer<p.sequence.length&&p.ability<=0){p.hint=.75;p.ability=2;p.score=Math.max(0,p.score-4);p.combo=0;flash(p,'HINT −4',RED);}if(phase>=3&&di>=0&&p.answer<p.sequence.length){if(di===memoryAnswer(p)){p.answer++;p.score+=4;flash(p,p.answer===p.sequence.length?'SPELL COMPLETE':'CORRECT +4');if(p.answer===p.sequence.length){p.combo++;p.score+=10+Math.min(8,p.combo*2);}}else{p.answer=0;p.combo=0;p.score=Math.max(0,p.score-3);flash(p,'TRY AGAIN',RED);}}break;}
-   case 'redlight':{if(di===1)p.lane=Math.min(2,p.lane+1);if(di===3)p.lane=Math.max(0,p.lane-1);const cover=p.lane===(s.phase+p.slot)%3&&i.down;p.alert=Math.max(0,p.alert-dt*(cover?.6:.1));if(hit&&s.green&&p.ability<=0){p.progress+=12;p.alert+=.25;p.ability=2.8;flash(p,'SPRINT +12m');}if(i.up){if(s.green||cover){p.progress+=dt*(cover?6:15);p.score+=dt*(cover?1.4:3);}else{p.alert+=dt*1.2;p.progress=Math.max(0,p.progress-dt*25);p.score=Math.max(0,p.score-dt*9);if(p.cooldown<=0){flash(p,'SEEN — SEEK COVER',RED);p.cooldown=.8;}}}if(p.alert>=1){p.progress=Math.max(0,p.progress-18);p.score=Math.max(0,p.score-6);p.alert=.2;flash(p,'ALARM −6',RED);}if(p.progress>=100){p.progress=0;p.score+=25;flash(p,'DELIVERED +25');}break;}
+   case 'redlight':stepWatchman(g,p,i,hit,di,dt);break;
    case 'tug':{if(di===1)p.grip=1;if(di===3)p.grip=0;p.jammed=Math.max(0,p.jammed-dt);p.heat=Math.max(0,p.heat-dt*(i.down?.75:.13));if(hit&&p.jammed<=0&&!i.down){if(p.grip===Math.floor(t/4)%2){p.score+=1.6+Math.min(.8,p.combo*.04);p.combo++;p.heat+=.17;flash(p,`PULL ×${p.combo}`);}else{p.combo=0;p.heat+=.28;p.score=Math.max(0,p.score-2);flash(p,'WRONG CHAIN',RED);}if(p.heat>=1){p.heat=1;p.jammed=1.5;p.combo=0;p.score=Math.max(0,p.score-4);flash(p,'OVERHEAT! HOLD ↓',RED);}}break;}
-   case 'raft':{if(hit&&p.ability<=0){p.jump=.68;p.ability=1.8;flash(p,'LEAP');}p.jump=Math.max(0,p.jump-dt);p.x=clamp(p.x+(horizontal*(i.down?165:310)+s.wind*(i.down?.15:1))*dt,50,910);p.safe=Math.abs(p.x-(120+s.safe*180))<82;if(p.safe||s.next>1.35||p.jump>0)p.score+=dt*3;else if(p.cooldown<=0){p.score=Math.max(0,p.score-4);p.cooldown=.8;flash(p,'FALL −4',RED);}if(s.shardTimer<=0&&Math.abs(p.x-(120+s.shard*180))<32){p.score+=12;s.shard=(s.shard+2+pick(g,2))%5;s.shardTimer=2.6;flash(p,'SKY SHARD +12');}break;}
-   case 'gallery':p.aim=clamp(p.aim+horizontal*dt*.63,0,1);if(hit&&p.cooldown<=0)fireGallery(g,p,false);p.charge=i.action?Math.min(1.2,p.charge+dt):p.charge;if(release){if(p.charge>=.65)fireGallery(g,p,true);p.charge=0;}break;
+   case 'raft':{const airborne=p.jump>0;if(hit&&p.ability<=0){p.jump=.68;p.takeoffX=p.x;p.ability=1.8;flash(p,'LEAP');}p.jump=Math.max(0,p.jump-dt);p.x=clamp(p.x+(horizontal*(i.down?165:310)+s.wind*(i.down?.15:1))*dt,50,910);p.safe=Math.abs(p.x-(120+s.safe*180))<82;if(p.safe||s.next>1.35||p.jump>0)p.score+=dt*3;else if(p.cooldown<=0){p.combo=0;p.score=Math.max(0,p.score-4);p.cooldown=.8;flash(p,'FALL −4',RED);}if(t>8&&airborne&&p.jump===0&&p.safe&&Math.abs(p.x-p.takeoffX)>95){p.combo++;const reward=6+Math.min(6,p.combo*2);p.score+=reward;p.ability=Math.max(0,p.ability-.6);flash(p,`ISLAND CHAIN ×${p.combo} +${reward}`);}if(s.shardTimer<=0&&Math.abs(p.x-(120+s.shard*180))<32){p.score+=12+(t>8?Math.min(6,p.combo*2):0);s.shard=(s.shard+2+pick(g,2))%5;s.shardTimer=2.6;flash(p,'SKY SHARD +12');}break;}
+   case 'gallery':p.aim=clamp(p.aim+horizontal*dt*(t>8&&i.down?.27:.63),0,1);if(hit&&p.cooldown<=0)fireGallery(g,p,false);p.charge=i.action?Math.min(1.2,p.charge+dt):p.charge;if(release){if(p.charge>=.65)fireGallery(g,p,true);p.charge=0;}break;
    case 'fishing':{if(!p.hooked){p.phase=wrap(p.phase+dt*(2.3+p.level*.1));if(hit&&p.cooldown<=0){p.cooldown=.4;if(angleGap(p.phase,p.arc)<.34){p.hooked=true;p.reel=0;p.tension=.28;p.fight=pick(g,2)?1:-1;p.fightClock=1.1;p.score+=2;flash(p,'HOOKED — FOLLOW ARROW');}else{p.score=Math.max(0,p.score-2);flash(p,'MISSED −2',RED);}}}else{p.fightClock-=dt;if(p.fightClock<=0){p.fight*=-1;p.fightClock=.8+random(g)*.8;}p.tension=clamp(p.tension+dt*(i.down?-.72:horizontal===p.fight?-.11:.3),0,1.2);if(hit&&!i.down){if(horizontal===p.fight){p.reel+=.22;p.tension+=.08;flash(p,'REEL!');}else{p.tension+=.24;flash(p,'WRONG SIDE',RED);}}p.reel=Math.max(0,p.reel-dt*.025);if(p.tension>=1){p.hooked=false;p.combo=0;p.score=Math.max(0,p.score-4);p.cooldown=.7;flash(p,'LINE SNAPPED −4',RED);}else if(p.reel>=1){p.hooked=false;p.level++;p.combo++;p.score+=12+Math.min(8,p.combo*2);p.arc=wrap(p.arc+1.4+random(g)*2);p.cooldown=.5;flash(p,'RELIC LANDED!');}}break;}
    case 'balance':{const gust=Math.floor(t/5)%2?1.7:1,wind=(Math.sin(t*2.1+p.slot*.8)*.52+Math.sin(t*.7)*.28)*gust;const brace=i.down;p.velocity+=(wind*(brace?.3:1)+p.lean*.65+horizontal*2.7)*dt;p.velocity*=Math.pow(brace?.18:.72,dt);p.lean+=p.velocity*dt;if(hit&&p.ability<=0){p.lean*=.25;p.velocity*=.15;p.ability=4;flash(p,'CAUGHT THE WIRE');}if(Math.abs(p.lean)<.75){p.score+=dt*(brace?.7:2);if(i.up&&!brace){p.crossing+=dt*18;p.score+=dt*3;}}if(p.crossing>=100){p.crossing-=100;p.level++;p.score+=20;flash(p,'CROSSED +20');}if(Math.abs(p.lean)>1.1){p.score=Math.max(0,p.score-6);p.crossing=Math.max(0,p.crossing-25);p.lean=0;p.velocity=0;flash(p,'DROPPED −6',RED);}break;}
    case 'sorting':{if(di===1)p.bin=Math.min(2,p.bin+1);if(di===3)p.bin=Math.max(0,p.bin-1);if(di===2&&p.fragile){p.stamped=true;flash(p,'FRAGILE STAMPED');}if(di===0&&p.ability<=0){nextParcel(g,p);p.ability=2;p.combo=0;p.score=Math.max(0,p.score-1);flash(p,'REROUTED −1',RED);}p.deadline-=dt;if(p.deadline<=0){p.score=Math.max(0,p.score-(p.express?5:2));p.combo=0;nextParcel(g,p);flash(p,'DELIVERY EXPIRED',RED);}if(hit&&p.cooldown<=0){p.cooldown=.2;if(p.bin===p.parcel&&(!p.fragile||p.stamped)){p.combo++;const reward=5+(p.express?4:0)+Math.min(5,Math.floor(p.combo/3));p.score+=reward;flash(p,`SORTED +${reward}`);}else{p.combo=0;p.score=Math.max(0,p.score-3);flash(p,p.fragile&&!p.stamped?'NEEDS ↓ STAMP':'WRONG BIN',RED);}nextParcel(g,p);}break;}
    case 'reaction':{if(di===1)p.choice=Math.min(2,p.choice+1);if(di===3)p.choice=Math.max(0,p.choice-1);if(di===0&&s.signal==='wait')p.wager=!p.wager;if(hit&&p.answered!==s.round){p.answered=s.round;if(s.signal==='go'&&p.choice===s.symbol){const speed=t-s.signalTime,reward=Math.max(3,Math.round(12-speed*10))*(p.wager?2:1);p.score+=reward;p.combo++;flash(p,`${Math.round(speed*1000)} MS +${reward}`);}else{p.combo=0;p.score=Math.max(0,p.score-(p.wager?10:5));flash(p,p.choice!==s.symbol?'WRONG SIGIL':'FALSE START',RED);}p.wager=false;}break;}
-   case 'trace':{if(!i.action)p.focusExhausted=false;if(p.focus<=0)p.focusExhausted=true;const focused=i.action&&!p.focusExhausted&&p.focus>0;p.focus=clamp(p.focus+dt*(focused?-.45:.28),0,1);move(p,i,dt,focused?130:215);const target=tracePoint(g,p);if(dist(p,target)<(focused?46:25)){p.combo=t-p.linkTime<2.8?p.combo+1:1;p.linkTime=t;p.score+=5+Math.min(5,p.combo-1);p.node++;flash(p,`LINK ×${p.combo}`);if(p.node>=p.route.length){p.score+=14;p.node=0;p.route=Array.from({length:6},()=>({x:75+random(g)*810,y:150+random(g)*260}));}}if(!focused&&p.cooldown<=0&&s.comets.some(o=>dist(o,p)<29)){p.combo=0;p.score=Math.max(0,p.score-5);p.cooldown=1;p.x=clamp(p.x+35,50,910);flash(p,'COMET −5',RED);}break;}
+   case 'trace':{if(!i.action)p.focusExhausted=false;if(p.focus<=0)p.focusExhausted=true;const focused=i.action&&!p.focusExhausted&&p.focus>0;p.focus=clamp(p.focus+dt*(focused?-.45:.28),0,1);move(p,i,dt,focused?130:215);const target=tracePoint(g,p);if(dist(p,target)<(focused?46:25)){const quick=t>8&&p.combo>0&&t-p.linkTime<1.5;p.combo=t-p.linkTime<2.8?p.combo+1:1;p.linkTime=t;p.score+=5+Math.min(5,p.combo-1)+(quick?3:0);if(quick)p.focus=Math.min(1,p.focus+.12);p.node++;flash(p,`LINK ×${p.combo}`);if(p.node>=p.route.length){p.score+=14;p.node=0;p.route=Array.from({length:6},()=>({x:75+random(g)*810,y:150+random(g)*260}));}}if(!focused&&p.cooldown<=0&&s.comets.some(o=>dist(o,p)<29)){p.combo=0;p.score=Math.max(0,p.score-5);p.cooldown=1;p.x=clamp(p.x+35,50,910);flash(p,'COMET −5',RED);}break;}
    case 'potato':{p.parry=Math.max(0,p.parry-dt);if(di===1)p.recipient=(p.recipient+1)%g.players.length;if(di===3)p.recipient=(p.recipient+g.players.length-1)%g.players.length;if(di===2&&s.holder!==p.slot&&p.ability<=0){p.parry=.42;p.ability=2.5;flash(p,'REFLECT READY');}if(di===0&&s.holder===p.slot&&s.jinx===1&&s.fuse>1){s.jinx=2;s.fuse-=.75;p.score=Math.max(0,p.score-2);flash(p,'DOUBLE CURSE');}if(hit&&s.holder===p.slot&&p.cooldown<=0){let to=p.recipient;if(to===p.slot&&g.players.length>1)to=(to+1)%g.players.length;const receiver=g.players[to];s.lastFrom=p.slot;s.passes++;p.cooldown=.55;if(receiver.parry>0){receiver.parry=0;receiver.score+=6;s.fuse=Math.max(.25,s.fuse-.2);flash(receiver,'REFLECTED +6');flash(p,'RETURN TO SENDER',RED);}else{s.holder=to;p.score+=3;receiver.cooldown=Math.max(receiver.cooldown,.24);flash(p,'PASSED +3');}}p.score+=dt*.5;break;}
    case 'crates':{if(hit&&p.history.length&&p.undos>0){const previous=p.history.pop();p.cx=previous.cx;p.cy=previous.cy;p.boxes=previous.boxes;p.score=previous.score;p.undos--;p.walk=.2;flash(p,`UNDONE · ${p.undos} LEFT`);}if(p.walk<=0){const d=KEYS.findIndex(k=>i[k]);if(d>=0){const [dx,dy]=DIRS[d],x=p.cx+dx,y=p.cy+dy;if(x>=0&&x<5&&y>=0&&y<5&&!p.walls.some(w=>w.x===x&&w.y===y)){const b=p.boxes.find(b=>b.x===x&&b.y===y);if(!b){p.cx=x;p.cy=y;}else{const bx=x+dx,by=y+dy;if(!b.delivered&&bx>=0&&bx<5&&by>=0&&by<5&&!p.boxes.some(q=>q.x===bx&&q.y===by)&&!p.walls.some(w=>w.x===bx&&w.y===by)){p.history.push({cx:p.cx,cy:p.cy,boxes:p.boxes.map(q=>({...q})),score:p.score});if(p.history.length>6)p.history.shift();b.x=bx;b.y=by;p.cx=x;p.cy=y;if(b.x===b.tx&&b.y===b.ty){b.delivered=true;p.score+=7;flash(p,'ONE RELIC SEALED +7');}}}p.walk=.14;}}}if(p.boxes.every(b=>b.delivered)){p.score+=16;p.level++;crateSetup(g,p);flash(p,'PAIR COMPLETE +16');}syncCrates(p);break;}
    case 'orbit':{if(hit)p.dir*=-1;if(di===0)p.orbitLane=1;if(di===2)p.orbitLane=0;p.angle=wrap(p.angle+p.dir*(p.orbitLane?2.3:1.8)*dt);if(p.orbitLane===p.sparkLane&&angleGap(p.angle,p.spark)<.17){p.combo++;p.score+=7+Math.min(5,p.combo-1);p.spark=wrap(p.spark+(p.dir>0?1:-1)*(1+random(g)*1.3));p.sparkLane=1-p.sparkLane;flash(p,`STAR CHAIN ×${p.combo}`);}if(p.orbitLane===p.thornLane&&angleGap(p.angle,p.thorn)<.16&&p.cooldown<=0){p.score=Math.max(0,p.score-4);p.cooldown=.8;p.dir*=-1;p.combo=0;flash(p,'THORN −4',RED);}p.thorn=wrap(p.thorn+dt*(Math.floor(t/6)%2?.52:.16));p.thornLane=Math.floor(t/4+p.slot)%2;break;}
    case 'cipher':{p.reveal=Math.max(0,p.reveal-dt);p.lockClock-=dt*(i.down?-.65:1);p.lockClock=Math.min(10,p.lockClock);if(di===0&&p.ability<=0){p.reveal=1.5;p.ability=2;p.score=Math.max(0,p.score-2);flash(p,'PEEK −2',RED);}if(di===1)p.symbol=(p.symbol+1)%5;if(di===3)p.symbol=(p.symbol+4)%5;if(hit&&p.cooldown<=0&&!i.down){p.cooldown=.15;if(p.symbol===p.code[p.order[p.dial]]){p.dial++;p.score+=3;flash(p,'CLICK +3');if(p.dial===3){p.score+=12+Math.floor(p.lockClock);p.level++;cipherSetup(g,p);flash(p,'UNLOCKED +TIME BONUS');}}else{p.score=Math.max(0,p.score-2);p.lockClock-=1.2;flash(p,'ALARM −2',RED);}}if(p.lockClock<=0){p.score=Math.max(0,p.score-4);cipherSetup(g,p);flash(p,'LOCK RESET −4',RED);}break;}
-   case 'shadow':{if(hit&&!i.down&&p.cooldown<=0){p.dash=.23;p.cooldown=1.7;}p.dash=Math.max(0,p.dash-dt);move(p,i,dt,p.dash>0?480:195);if(i.down&&dist(p,ALTAR)<58&&p.relics>0){const reward=p.relics*12;p.score+=reward;p.banked+=p.relics;p.relics=0;flash(p,`ALTAR +${reward}`);}else if(hit&&i.down&&p.ability<=0){s.decoys.push({x:p.x,y:p.y,life:2.1});if(s.decoys.length>4)s.decoys.shift();p.ability=5;flash(p,'GHOST DECOY');}for(const o of s.relics)if(dist(p,o)<28&&p.relics<3){p.relics++;o.x=80+random(g)*800;o.y=145+random(g)*240;flash(p,`RELIC ${p.relics} — ↓ AT ALTAR`);}if(dist(p,s.seeker)<53&&p.guard<=0&&p.dash<=0&&!hiddenInCourt(p)){p.score=Math.max(0,p.score-7);p.relics=Math.max(0,p.relics-1);p.guard=1.1;flash(p,'SPOTTED −7',RED);}else if(dist(p,s.seeker)>=53&&!hiddenInCourt(p))p.score+=dt*2;break;}
+   case 'shadow':{if(hit&&!i.down&&p.cooldown<=0){p.dash=.23;p.cooldown=1.7;}p.dash=Math.max(0,p.dash-dt);move(p,i,dt,p.dash>0?480:195);if(i.down&&dist(p,ALTAR)<58&&p.relics>0){const reward=p.relics*12;p.score+=reward;p.banked+=p.relics;p.relics=0;flash(p,`ALTAR +${reward}`);}else if(hit&&i.down&&p.ability<=0){s.decoys.push({x:p.x,y:p.y,life:2.1});if(s.decoys.length>4)s.decoys.shift();p.ability=5;if(t>8&&dist(p,s.seeker)<150){p.score+=4;p.cooldown=Math.max(0,p.cooldown-.65);flash(p,'CLOSE DECOY +4');}else flash(p,'GHOST DECOY');}for(const o of s.relics)if(dist(p,o)<28&&p.relics<3){p.relics++;o.x=80+random(g)*800;o.y=145+random(g)*240;flash(p,`RELIC ${p.relics} — ↓ AT ALTAR`);}if(dist(p,s.seeker)<53&&p.guard<=0&&p.dash<=0&&!hiddenInCourt(p)){p.score=Math.max(0,p.score-7);p.relics=Math.max(0,p.relics-1);p.guard=1.1;flash(p,'SPOTTED −7',RED);}else if(dist(p,s.seeker)>=53&&!hiddenInCourt(p))p.score+=dt*2;break;}
   }
   p.prev=i;
  }
  if(g.time>=g.duration)g.done=true;return g;
 }
-export function getGameResults(g){if(g.id==='gullet-gala')return getGulletResults(g);if(BRAWL_IDS.has(g.id))return getBrawlResults(g);return g.players.map(p=>({id:p.id,score:Math.max(0,Math.round(p.score))})).sort((a,b)=>b.score-a.score);}
+export function getGameResults(g){if(CHALLENGE_IDS.has(g.id))return getChallengeResults(g);if(g.id==='gullet-gala')return getGulletResults(g);if(BRAWL_IDS.has(g.id))return getBrawlResults(g);return g.players.map(p=>({id:p.id,score:Math.max(0,Math.round(p.score))})).sort((a,b)=>b.score-a.score);}
 
 // Each theatre shares the authoritative simulation above; all decorative motion is
 // computed from game time. Rendering never consumes RNG or writes network state.
@@ -252,7 +322,7 @@ function drawDynamicRules(c,g,h,worldOnly=false){
  const text=worldOnly?skipRule:rulePainters.text,glass=worldOnly?skipRule:rulePainters.glass,blocks=worldOnly?skipRule:rulePainters.blocks,arrow=worldOnly?skipRule:rulePainters.arrow;
  const object=worldOnly?rulePainters.object:skipRule,prop=worldOnly?rulePainters.prop:skipRule,fx=worldOnly?rulePainters.fx:skipRule;
  if(g.id==='mothlight'){object(c,h,'altar',NEST.x,NEST.y-8,100,63,t);fx(c,h,'magic',NEST.x,NEST.y-33,64,t,GOLD);text(c,'BANK',NEST.x,NEST.y+29,10,GOLD);fx(c,h,'magic',s.wisp.x,s.wisp.y,52,t,RED);prop(c,h,'orb',s.wisp.x,s.wisp.y,42,t*.2);text(c,'THIEF',s.wisp.x,s.wisp.y-24,8,RED);for(const o of s.objects)if(o.value>1){fx(c,h,'magic',o.x,o.y,37,t,GOLD);text(c,'×3',o.x,o.y-23,10,GOLD);}}
- if(g.id==='maze')for(const p of g.players){const a=panelX(g,p.slot),cell=Math.min(43,(a.w-SCENE_LAYOUT.gridInset)/7),x=a.cx-cell*3.5,y=164;for(const gate of MAZE_GATES){const gx=x+(gate.x+.5)*cell,gy=y+(gate.y+.5)*cell;if(gateClosed(g,gate.x,gate.y))object(c,h,'crate',gx,gy,cell*.91,cell*.96,t);else fx(c,h,'magic',gx,gy,cell*.75,t,p.color);}if(!p.rune)object(c,h,'star',x+2.5*cell,y+5.5*cell,cell*.65,cell*.65,t);}
+ if(g.id==='maze')for(const p of g.players){const a=panelX(g,p.slot),cell=Math.min(43,(a.w-SCENE_LAYOUT.gridInset)/7),x=a.cx-cell*3.5,y=164;for(const gate of MAZE_GATES){const gx=x+(gate.x+.5)*cell,gy=y+(gate.y+.5)*cell;if(gateClosed(g,gate.x,gate.y))object(c,h,'crate',gx,gy,cell*.91,cell*.96,t);else fx(c,h,'magic',gx,gy,cell*.75,t,p.color);}if(!p.rune)object(c,h,'star',x+2.5*cell,y+5.5*cell,cell*.65,cell*.65,t);if(t>8&&!p.huntFound){const hx=x+(p.huntTile.x+.5)*cell,hy=y+(p.huntTile.y+.5)*cell;object(c,h,'star',hx,hy,cell*.8,cell*.8,t);fx(c,h,'magic',hx,hy,cell*.86,t,p.color);}if(p.phaseWindow>0)fx(c,h,'dust',x+(p.cx+.5)*cell,y+(p.cy+.5)*cell,cell*1.15,t,p.color);}
  if(g.id==='memory')for(const p of g.players)if(p.hint>0&&p.answer<p.sequence.length){const a=panelX(g,p.slot);glass(c,a.cx-34,301,68,43,p.color);arrow(c,memoryAnswer(p),a.cx,323,31,GOLD);}
  if(g.id==='redlight')for(const p of g.players){const cover=(s.phase+p.slot)%3;for(const progress of [85,53,21]){const q=watchmanSpot(g,p,progress,cover);object(c,h,'crate',q.x,q.y-7,31*q.scale,34*q.scale,t);}const q=watchmanSpot(g,p,Math.min(93,p.progress+13),cover);text(c,'↓',q.x,q.y-9,14,p.color);}
  if(g.id==='tug')for(const p of g.players){const a=panelX(g,p.slot),side=Math.floor(t/4)%2;glass(c,a.cx-63,198,126,24,p.heat>.78?RED:p.color);text(c,side?'PULL RIGHT →':'← PULL LEFT',a.cx,211,10,side===p.grip?p.color:RED);blocks(c,a.cx-58,228,116,p.heat,p.heat>.78?RED:GOLD,14,6);}
@@ -262,13 +332,14 @@ function drawDynamicRules(c,g,h,worldOnly=false){
  if(g.id==='reaction'&&!worldOnly){const symbols=['key','gear','orb'];glass(c,423,325,114,32,GOLD);rulePainters.prop(c,h,symbols[s.symbol],447,341,29);text(c,['KEY','GEAR','ORB'][s.symbol],495,341,10,PAPER);for(const p of g.players){const a=panelX(g,p.slot);rulePainters.prop(c,h,symbols[p.choice],a.cx+30,408,27);}}
  if(g.id==='trace'){for(const o of s.comets){fx(c,h,'dust',o.x-Math.sign(o.vx)*20,o.y,44,t,RED);prop(c,h,'orb',o.x,o.y,28,t*.2);fx(c,h,'hit',o.x,o.y,35,t,RED);}for(const p of g.players)if(p.prev.action&&!p.focusExhausted&&p.focus>0)fx(c,h,'shield',p.x,p.y-12,75,t,p.color);}
  if(g.id==='potato')for(const p of g.players)if(p.parry>0){const a=p.slot*TAU/g.players.length-Math.PI/2,x=480+Math.cos(a)*291,y=SCENE_LAYOUT.omenCenterY+Math.sin(a)*SCENE_LAYOUT.omenRadiusY;fx(c,h,'shield',x,y,87,t,'#a5d4e3');text(c,'REFLECT',x,y-60,10,'#a5d4e3');}
- if(g.id==='shadow'){for(const z of [{x:185,y:235},{x:775,y:310}]){fx(c,h,'dust',z.x,z.y,85,t,'#92adc0');object(c,h,'pedestal',z.x,z.y+19,77,48,t);}object(c,h,'altar',ALTAR.x,ALTAR.y-6,95,64,t);text(c,'BANK',ALTAR.x,ALTAR.y+30,10,GOLD);for(const o of s.relics){fx(c,h,'magic',o.x,o.y,37,t,GOLD);prop(c,h,'key',o.x,o.y,38,Math.sin(t)*.2);}for(const d of s.decoys){c.save();c.globalAlpha=Math.min(.8,d.life*.4);prop(c,h,'orb',d.x,d.y,57,t*.2);fx(c,h,'magic',d.x,d.y,66,t,'#d7c5ea');c.restore();}}
+ if(g.id==='shadow'){for(const z of [{x:185,y:235},{x:775,y:310}]){c.save();c.globalAlpha=.32;fx(c,h,'magic',z.x,z.y-8,31,t,'#b5a6be');c.restore();object(c,h,'pedestal',z.x,z.y+19,77,48,t);}object(c,h,'altar',ALTAR.x,ALTAR.y-6,95,64,t);text(c,'BANK',ALTAR.x,ALTAR.y+30,10,GOLD);for(const o of s.relics){fx(c,h,'magic',o.x,o.y,37,t,GOLD);prop(c,h,'key',o.x,o.y,38,Math.sin(t)*.2);}for(const d of s.decoys){c.save();c.globalAlpha=Math.min(.8,d.life*.4);prop(c,h,'orb',d.x,d.y,57,t*.2);fx(c,h,'magic',d.x,d.y,66,t,'#d7c5ea');c.restore();}}
 
 }
 
 export function drawGame(c,g,h={}){
- const lighting=sceneLighting(g);h.beginScene?.(c,g.id,g.time,lighting);
- if(BRAWL_IDS.has(g.id)||g.id==='gullet-gala'){let ended=false;const end=()=>{if(!ended){ended=true;h.endScene?.(c);}};try{return (g.id==='gullet-gala'?drawGullet:drawBrawl)(c,g,{...h,endScene:end});}finally{end();}}
+ const lighting=sceneLighting(g);h.beginScene?.(c,g.id,g.time,lighting,g);
+ if(CHALLENGE_IDS.has(g.id)){let ended=false;const end=()=>{if(!ended){ended=true;drawMinigameSurprises(c,g,h);h.endScene?.(c);drawMinigameSurpriseCue(c,g,h);}};try{return drawChallenge(c,g,{...h,endScene:end});}finally{end();}}
+ if(BRAWL_IDS.has(g.id)||g.id==='gullet-gala'){let ended=false;const end=()=>{if(!ended){ended=true;drawMinigameSurprises(c,g,h);h.endScene?.(c);drawMinigameSurpriseCue(c,g,h);}};try{return (g.id==='gullet-gala'?drawGullet:drawBrawl)(c,g,{...h,endScene:end});}finally{end();}}
  c.save();c.fillStyle=INK;c.fillRect(0,0,W,H);h.background?.(c,g.id,g.time);scenery(c,g,h);
  const s=g.state,t=g.time,theme=MINIGAME_REALMS[g.id],col=theme.color;
  let heading;const title=(_context,...args)=>{heading=args;};
@@ -300,6 +371,7 @@ export function drawGame(c,g,h={}){
    title(c,'PLAY THE MARSH’S MUSHROOM ORGAN');
    for(const p of g.players){const y=183+p.slot*65;c.save();c.beginPath();c.rect(166,y-19,728,45);c.clip();h.clipMaterials?.(c,166,y-19,728,45);platform(c,h,529,y+17,715,13,t,'wood');h.restoreMaterials?.();c.restore();object(c,h,'portal',242,y,56,61,t);glass(c,163,y-23,54,24,p.color);text(c,p.track?'SUN →':'← MOON',190,y-11,8,p.color);
     for(let b=0;b<100;b++){const x=242+(rhythmTime(b)-t)*270,ny=y+(rhythmLane(b)?-9:9),nc=rhythmLane(b)?GOLD:p.color;if(x>178&&x<877){object(c,h,rhythmLane(b)?'star':'gauge',x,ny,34,34,t);if(Math.abs(x-242)<24)fx(c,h,'magic',x,ny,40,t,nc);}}
+    if(p.echoAt>0&&t<p.echoAt+.12&&p.echoClaimed!==p.echoBeat){const lane=1-rhythmLane(p.echoBeat),x=242+(p.echoAt-t)*270,ny=y+(lane?-9:9);object(c,h,lane?'star':'gauge',x,ny,29,29,t);fx(c,h,'magic',x,ny,41,t,p.color);}
     object(c,h,'pedestal',105,y+26,51,27,t);character(c,h,p,105,y+24,43);if(p.flash>0){glass(c,674,y-20,196,21,p.color);text(c,p.message,772,y-9,11,p.messageColor);}}break;
   }
   case 'maze':{
@@ -402,7 +474,9 @@ export function drawGame(c,g,h={}){
  }
  drawDynamicRules(c,g,h,true);
  for(const e of lighting.effects)h.fx?.(c,e.type,e.x,e.y,e.size,e.time,{alpha:e.alpha,progress:e.progress,rotation:e.rotation,color:e.color});
+ drawMinigameSurprises(c,g,h);
  h.endScene?.(c);
+ drawMinigameSurpriseCue(c,g,h);
  drawDynamicRules(c,g,h);
  const cue=g.id==='redlight'?(s.green?'GO':'FREEZE'):g.id==='sweep'?(s.height==='high'?'HIGH TRAIN · DUCK':s.next-t<.5?'LOW TRAIN · JUMP':s.express?'EXPRESS TRAIN':'LOW TRAIN APPROACHING'):g.id==='raft'&&s.warning?'ISLANDS SHIFTING':g.id==='inkfall'?['GEAR SHOWER','GEAR RAIN','PRESS WALL'][s.wave]:'';
  drawGameHUD(c,g,h,{mode:'arcade',cue});

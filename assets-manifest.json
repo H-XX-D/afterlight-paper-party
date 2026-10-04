@@ -15,9 +15,9 @@
     },
     {
       "name": "props",
-      "file": "props.png",
-      "mime": "image/png",
-      "role": "sprite-atlas"
+      "file": "props-paper-v2.webp",
+      "mime": "image/webp",
+      "role": "clean-outlined-paper-props"
     },
     {
       "name": "world",
@@ -217,15 +217,15 @@
     },
     {
       "name": "paper-objects",
-      "file": "paper-objects.webp",
+      "file": "paper-objects-v2.webp",
       "mime": "image/webp",
-      "role": "paper-sprite-atlas"
+      "role": "clean-outlined-folded-paper-objects"
     },
     {
       "name": "pixel-fx",
-      "file": "pixel-fx.webp",
+      "file": "folded-paper-fx.webp",
       "mime": "image/webp",
-      "role": "paper-sprite-atlas"
+      "role": "clean-folded-paper-effects"
     },
     {
       "name": "board-kit",
@@ -274,6 +274,30 @@
       "file": "motion-new.webp",
       "mime": "image/webp",
       "role": "paper-inbetween-animation-atlas"
+    },
+    {
+      "name": "folded-environment",
+      "file": "folded-environment-v2.webp",
+      "mime": "image/webp",
+      "role": "clean-outlined-folded-environment-atlas"
+    },
+    {
+      "name": "scene-clockwork-surgery",
+      "file": "scene-clockwork-surgery.webp",
+      "mime": "image/webp",
+      "role": "paper-surgery-diorama"
+    },
+    {
+      "name": "scene-tottering-tower",
+      "file": "scene-tottering-tower.webp",
+      "mime": "image/webp",
+      "role": "paper-tower-diorama"
+    },
+    {
+      "name": "challenge-props",
+      "file": "challenge-props.webp",
+      "mime": "image/webp",
+      "role": "folded-challenge-props"
     }
   ]
 }

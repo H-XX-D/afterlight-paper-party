@@ -169,6 +169,8 @@ SOFTWARE.
 
 Font subsets cached from Google Fonts retain their upstream SIL Open Font License notices:
 
+- [Alegreya](public/fonts/licenses/alegreya-OFL.txt) — [upstream](https://github.com/google/fonts/tree/main/ofl/alegreya).
+- [Alegreya SC](public/fonts/licenses/alegreyasc-OFL.txt) — [upstream](https://github.com/google/fonts/tree/main/ofl/alegreyasc).
 - [Barlow Condensed](public/fonts/licenses/barlowcondensed-OFL.txt) — [upstream](https://github.com/google/fonts/tree/main/ofl/barlowcondensed).
 - [DM Sans](public/fonts/licenses/dmsans-OFL.txt) — [upstream](https://github.com/google/fonts/tree/main/ofl/dmsans).
 - [Space Mono](public/fonts/licenses/spacemono-OFL.txt) — [upstream](https://github.com/google/fonts/tree/main/ofl/spacemono).

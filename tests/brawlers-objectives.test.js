@@ -89,7 +89,7 @@ test('new roster and special input survive JSON replay without private board fie
 });
 test('objective art helpers and special animation reach the renderer before HUD resolution',()=>{
  const events=[],kinds=new Set(),gradient={addColorStop(){}};const ctx=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>(o[k]=v,true)});
- for(const def of BRAWL_GAMES.slice(4)){const g=createBrawl(def.id,roster(4,true,4),7);tick(g,180);const before=JSON.stringify(g);drawBrawl(ctx,g,{background(){},platform(){},objective(c,kind,x,y,size){assert.ok(Number.isFinite(x+y+size));events.push('object');kinds.add(kind);},character(c,p,x,y,size,opt){if(size===72)assert.ok('specialAnimation' in opt);},fx(){},endScene(){events.push('end');}});assert.equal(JSON.stringify(g),before);assert.equal(events.at(-1),'end');}
+ for(const def of BRAWL_GAMES.slice(4)){const g=createBrawl(def.id,roster(4,true,4),7);tick(g,180);if(def.id==='rift-ball')g.state.objective.ball.reset=0;const before=JSON.stringify(g);drawBrawl(ctx,g,{background(){},platform(){},objective(c,kind,x,y,size){assert.ok(Number.isFinite(x+y+size));events.push('object');kinds.add(kind);},character(c,p,x,y,size,opt){if(size>=84)assert.ok('specialAnimation' in opt);},fx(){},endScene(){events.push('end');}});assert.equal(JSON.stringify(g),before);assert.equal(events.at(-1),'end');}
  assert.deepEqual(kinds,new Set(['target','dummy','foe','ball','bank','bomb','checkpoint','boss']));
 });
 test('solo boxing supplies a real pressure-scored sparring automaton',()=>{

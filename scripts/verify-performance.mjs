@@ -21,6 +21,8 @@ const scenes=[
   {index:17,id:'bellows-boxing',character:4,preRoll:15},
   {index:15,id:'gullet-gala',character:4,preRoll:29},
   {index:18,id:'colossus-wake',character:4,preRoll:3},
+  {index:24,id:'clockwork-surgery',character:0,preRoll:0},
+  {index:25,id:'tottering-tower',character:4,preRoll:0},
 ];
 const report={
   startedAt:new Date().toISOString(),label,
@@ -38,7 +40,7 @@ try{
   page.on('pageerror',error=>report.pageErrors.push(error.message));
   const startupStarted=performance.now();
   await page.goto(pathToFileURL(path.join(directory,'AFTERLIGHT.html')).href);
-  await page.waitForFunction(()=>window.afterlight?.minigames?.length===24);
+  await page.waitForFunction(()=>window.afterlight?.minigames?.length===26);
   report.startupMs=performance.now()-startupStarted;
   report.startupHeap=await page.evaluate(()=>performance.memory?{used:performance.memory.usedJSHeapSize,total:performance.memory.totalJSHeapSize,limit:performance.memory.jsHeapSizeLimit}:null);
 
@@ -102,6 +104,7 @@ try{
   await page.locator('[data-play="solo"]').first().click();
   await page.locator('[data-character="0"]').click();
   await page.locator('#start-solo').click();
+  await page.waitForFunction(()=>window.afterlight.state?.phase==='board'&&document.querySelector('#hand-panel'));
   await page.evaluate(()=>{for(const player of window.afterlight.state.players)player.bot=true;});
   await sample('moving-card-board','board',{characters:[0,1,2,3],allBots:true});
   for(const scene of scenes){

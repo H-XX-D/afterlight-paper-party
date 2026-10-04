@@ -1,10 +1,13 @@
+export const GAME_UI_FONT='"Alegreya SC",Georgia,serif';
+export const gameFont=(size,weight='700')=>`${weight} ${size}px ${GAME_UI_FONT}`;
+
 /** Shared illustrated HUD. Read-only rendering, after the gameplay material pass. */
 const IVORY='#f3e7c9',INK='#191d1b',MUTED='#c1b699',GOLD='#ead29b',TAU=Math.PI*2;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const number=v=>Number.isFinite(v)?v:0;
 function ink(c,value,x,y,size=12,color=IVORY,align='left',width=0){
-  const s=String(value);c.font=`bold ${size}px Georgia,serif`;c.textAlign=align;c.textBaseline='middle';
-  if(width>0&&typeof c.measureText==='function'){const measured=c.measureText(s)?.width;if(Number.isFinite(measured)&&measured>width)c.font=`bold ${Math.max(7,size*width/measured)}px Georgia,serif`;}
+  const s=String(value);c.font=gameFont(size);c.textAlign=align;c.textBaseline='middle';
+  if(width>0&&typeof c.measureText==='function'){const measured=c.measureText(s)?.width;if(Number.isFinite(measured)&&measured>width)c.font=gameFont(Math.max(7,size*width/measured));}
   c.lineJoin='round';c.lineWidth=size>=24?3:2;c.strokeStyle='#101512';c.strokeText(s,x,y);c.fillStyle=color;c.fillText(s,x,y);
 }
 function seal(c,x,y,size,color,filled=true){

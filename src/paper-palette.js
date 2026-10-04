@@ -20,7 +20,7 @@ export const PAPER_REALMS=Object.freeze({
  'bell-breakers':'ivory','relic-launch':'copper','hollow-horde':'sage','rift-ball':'frost',
  'spark-heist':'copper','fuse-festival':'copper','tower-relay':'sage','bellows-boxing':'copper',
  'colossus-wake':'violet','rift-rumble':'violet','crown-clash':'ivory','meteor-melee':'copper',
- 'spire-kings':'frost','gullet-gala':'sage',
+ 'spire-kings':'frost','gullet-gala':'sage','clockwork-surgery':'copper','tottering-tower':'violet',
  // Retained scene-art aliases do not add cache variants.
  memory:'violet',tug:'copper',fishing:'frost',balance:'frost',sorting:'copper',
  reaction:'ivory',potato:'sage',crates:'sage',orbit:'frost',cipher:'violet',

@@ -1,4 +1,5 @@
-import {drawGameHUD} from './game-hud.js';
+import {drawGameHUD,gameFont} from './game-hud.js';
+import {configureBotDifficulty,botControl,botTarget,botRankedChoice} from './bot-difficulty.js';
 /** A deterministic, shared-pellet feeding contest for the paper party. */
 export const GULLET_GAME=Object.freeze({id:'gullet-gala',name:'GULLET GALA',tag:'FEEDING FRENZY',duration:44,icon:'orb',description:'Four hungry paper creatures share one moon bowl. Sweep up pearls, dodge blackthorns, and burp a rival’s feast away.',instructions:'← → swivel · tap Space to bite · hold/release for a long gulp · ↑ switches GULP / SIP · ↓ burps pellets and rival jaws'});
 export const GULLET_ARENA=Object.freeze({x:480,y:292,rx:282,ry:139});
@@ -17,7 +18,7 @@ function spawn(g,kind){
   const speed=25+random(g)*48;
   g.state.objects.push({id:++g.state.nextId,kind,x:GULLET_ARENA.x+Math.cos(a)*GULLET_ARENA.rx*r,y:GULLET_ARENA.y+Math.sin(a)*GULLET_ARENA.ry*r,vx:-Math.sin(a)*speed,vy:Math.cos(a)*speed*.58,r:kind==='pearl'?10:8,value:kind==='pearl'?(g.state.course===3?8:6):kind==='thorn'?0:g.state.course===3?2:1,life:15,spin:random(g)*TAU});
 }
-export function createGullet(players,seed=1){
+export function createGullet(players,seed=1,options){
   if(!Array.isArray(players)||players.length<1||players.length>4)throw new Error('Gullet Gala needs1–4 travelers.');
   if(new Set(players.map(p=>String(p.id))).size!==players.length)throw new Error('Every traveler needs a distinct id.');
   const g={id:GULLET_GAME.id,time:0,duration:GULLET_GAME.duration,done:false,rng:(seed>>>0)||1,players:[],state:{objects:[],effects:[],nextId:0,spawnClock:.4,course:0,courseName:'MOON SUPPER',courseFlash:1,claims:0,claimSerial:0,burps:0}};
@@ -27,7 +28,7 @@ export function createGullet(players,seed=1){
     return {id:String(p.id),name:String(p.name||`Traveler ${slot+1}`).slice(0,18),character:clamp(Number.isInteger(p.character)?p.character:slot,0,7),bot:!!p.bot,slot,color:COLORS[slot],baseX,baseY,baseAngle,x:baseX,y:baseY,aim:0,angle:baseAngle,score:0,mode:'gulp',prev:input(),charging:false,charge:0,bite:0,biteDuration:.48,biteReach:0,bitePower:0,biteCaught:0,extension:0,cooldown:0,stun:0,burpCooldown:0,burpTime:0,caught:0,pearls:0,thorns:0,bites:0,chargedBites:0,burps:0,flash:0,message:''};
   });
   for(let n=0;n<30;n++)spawn(g,n%10===0?'pearl':n%10===5?'thorn':'crumb');
-  return g;
+  return configureBotDifficulty(g,options,seed);
 }
 function launch(g,p){
   const power=p.charge>=.36?clamp((p.charge-.2)/.8,.25,1):0;
@@ -45,7 +46,7 @@ function burp(g,p){
   tell(p,'PAPER BURP');for(let n=0;n<4;n++)effect(g,'dust',p.x+ux*(36+n*39),p.y+uy*(36+n*39),p.color,48+n*8);
 }
 function botInput(g,p){
-  const i=input(),target=g.state.objects.filter(o=>o.kind!=='thorn').map(o=>({o,d:Math.hypot(o.x-p.baseX,o.y-p.baseY),angle:gap(Math.atan2(o.y-p.baseY,o.x-p.baseX),p.baseAngle)})).filter(v=>Math.abs(v.angle)<.64).sort((a,b)=>(b.o.value*80-b.d)-(a.o.value*80-a.d))[0];
+  const i=input(),targets=g.state.objects.filter(o=>o.kind!=='thorn').map(o=>{const perceived=botTarget(g,p,o);return {o,d:Math.hypot(perceived.x-p.baseX,perceived.y-p.baseY),angle:gap(Math.atan2(perceived.y-p.baseY,perceived.x-p.baseX),p.baseAngle)};}).filter(v=>Math.abs(v.angle)<.64).sort((a,b)=>(b.o.value*80-b.d)-(a.o.value*80-a.d)),target=targets[botRankedChoice(g,p,targets.length,p.bites)];
   if(!target)return i;
   const aim=clamp(target.angle,-.6,.6),error=aim-p.aim;i.left=error<-.018;i.right=error>.018;
   const hazard=g.state.objects.some(o=>o.kind==='thorn'&&Math.hypot(o.x-p.x,o.y-p.y)<110&&Math.abs(gap(Math.atan2(o.y-p.y,o.x-p.x),p.angle))<.4);
@@ -124,7 +125,7 @@ export function stepGullet(g,inputs={},dt=1/60){
   for(const p of g.players){
     p.oldX=p.x;p.oldY=p.y;p.catching=false;
     for(const key of ['cooldown','stun','burpCooldown','burpTime','flash'])p[key]=Math.max(0,p[key]-dt);
-    const i=p.bot?botInput(g,p):input(inputs[p.id]),hit=i.action&&!p.prev.action,release=!i.action&&p.prev.action;
+    const i=p.bot?botControl(g,p,botInput(g,p),dt):input(inputs[p.id]),hit=i.action&&!p.prev.action,release=!i.action&&p.prev.action;
     p.aim=clamp(p.aim+(Number(i.right)-Number(i.left))*dt*(p.charging?.78:1.22),-.6,.6);p.angle=p.baseAngle+p.aim;
     if(i.up&&!p.prev.up&&p.bite<=0){p.mode=p.mode==='gulp'?'sip':'gulp';p.charging=false;p.charge=0;tell(p,p.mode==='sip'?'SIP · DRAW THEM CLOSE':'GULP · LONG REACH');}
     if(i.down&&!p.prev.down&&p.burpCooldown<=0&&p.stun<=0)burp(g,p);
@@ -146,7 +147,7 @@ export function stepGullet(g,inputs={},dt=1/60){
 export function getGulletResults(g){return g.players.map(p=>({id:p.id,score:Math.max(0,Math.round(p.score))})).sort((a,b)=>b.score-a.score);}
 
 function label(c,value,x,y,size=12,color='#f0e4c9',align='center'){
-  c.font=`bold ${size}px Georgia,serif`;c.textAlign=align;c.textBaseline='middle';c.lineWidth=3;c.strokeStyle='#211f1c';c.strokeText(String(value),x,y);c.fillStyle=color;c.fillText(String(value),x,y);
+  c.font=gameFont(size);c.textAlign=align;c.textBaseline='middle';c.lineWidth=3;c.strokeStyle='#211f1c';c.strokeText(String(value),x,y);c.fillStyle=color;c.fillText(String(value),x,y);
 }
 function panel(c,x,y,w,h){c.fillStyle='#d9cfb7';c.fillRect(x,y,w,h);c.fillStyle='#c0b399';for(let n=0;n<Math.floor(w/21);n++)c.fillRect(x+n*21+3,y+h-4,12,2);}
 export function drawGullet(c,g,h={}){

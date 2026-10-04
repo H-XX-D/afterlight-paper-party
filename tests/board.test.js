@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BOARD_SPACES, BOARD_RINGS, BOARD_LADDERS, BOARD_CHUTES, BOARD_SHORTCUTS, CARD_COLORS, boardRoutePoint, createParty, actParty, stepParty, finishMinigame, finishingBonus, finishProjection, rankPlayers, playableCards, viewParty } from '../src/board.js';
+import { BOARD_SPACES, BOARD_RINGS, BOARD_LADDERS, BOARD_CHUTES, BOARD_SHORTCUTS, BOARD_TIMINGS, CARD_COLORS, boardRoutePoint, createParty, actParty, stepParty, finishMinigame, finishingBonus, finishProjection, rankPlayers, playableCards, viewParty } from '../src/board.js';
+import {MINIGAMES} from '../src/minigames.js';
 
 const humans = ['a', 'b', 'c', 'd'].map(id => ({ id, name: id.toUpperCase() }));
 const make = options => createParty(humans, options);
@@ -15,6 +16,7 @@ function assertConserved(state) {
 function rig({ hand, top = card('ivory', 5), otherHands = [], deckTop, position = 0 } = {}) {
   const state = make({ seed: 12 });
   const stock = cards(state);
+  for(const card of stock)delete card.buff; // These baseline fixtures exercise unenchanted card rules.
   const take = spec => {
     const index = stock.findIndex(candidate => candidate.color === spec.color && candidate.value === spec.value);
     assert.notEqual(index, -1, `test card exists: ${spec.color} ${spec.value}`);
@@ -142,23 +144,31 @@ test('wild requires a real selected color; draw four is rejected if any active-c
   assert.equal(restricted.players[1].hand.length, 7);
   const legal = rig({ hand: [card('wild', 'draw4'), card('jade', 2), card('violet', 3)] });
   assert.equal(play(legal, legal.players[0].hand[0].id, 'ember'), true);
-  assert.equal(legal.players[1].hand.length, 11);
+  assert.equal(legal.players[1].hand.length, 7,'the receiver decides whether to stack before drawing');
+  assert.equal(legal.pendingDraw,4);assert.equal(legal.pendingDrawValue,'draw4');
   assert.equal(legal.activeColor, 'ember');
-  assert.equal(legal.skipNext, true);
+  assert.equal(legal.skipNext, false);
   assertConserved(legal);
 });
 
-test('skip and draw-two skip the affected seat; no penalty stacking; reverse changes order', () => {
+test('skip bypasses one seat, draw-two offers a stack decision, and reverse changes order', () => {
   for (const value of ['skip', 'draw2', 'reverse']) {
     const state = rig({ hand: [card('ivory', value), card('jade', 2), card('violet', 3)], position: 6 });
     const before = state.players[1].hand.length;
     assert.equal(play(state), true);
-    assert.equal(state.players[1].hand.length, before + (value === 'draw2' ? 2 : 0));
+    assert.equal(state.players[1].hand.length, before);
     assert.equal(actParty(state, 'b', 'play-card', { cardId: state.players[1].hand[0].id }), false);
     settle(state);
-    assert.equal(state.currentPlayerId, value === 'reverse' ? 'd' : 'c');
+    assert.equal(state.currentPlayerId, value === 'reverse' ? 'd' : value==='draw2'?'b':'c');
     assert.equal(state.turnDirection, value === 'reverse' ? -1 : 1);
     assert.equal(state.turnsCompleted, 1, 'skipped seats are not extra completed card turns');
+    if(value==='draw2'){
+      assert.equal(state.boardStage,'penalty-card');assert.equal(state.pendingDraw,2);
+      assert.equal(actParty(state,'b','pass'),false);
+      assert.equal(actParty(state,'b','draw-card'),true);
+      assert.equal(state.players[1].hand.length,before+2);assert.equal(state.currentPlayerId,'c');
+      assert.equal(state.pendingDraw,0);assert.equal(state.turnsCompleted,2);
+    }
     assertConserved(state);
   }
 });
@@ -180,7 +190,7 @@ test('LAST LIGHT must be called with two cards; missing it adds two; calling it 
   assertConserved(missed); assertConserved(called);
 });
 
-test('empty hand ends the match; final draw-four penalty applies before points are ranked', () => {
+test('empty hand ends immediately on points and discards unresolved final-card penalties', () => {
   for (const spec of [card('ivory', 1), card('wild', 'draw4')]) {
     const state = rig({ hand: [spec] });
     const targetBefore = state.players[1].hand.length;
@@ -191,7 +201,8 @@ test('empty hand ends the match; final draw-four penalty applies before points a
     assert.equal(state.finishBonus, 0);
     assert.equal(state.currentPlayerId, null);
     assert.equal(state.players[0].hand.length, 0);
-    assert.equal(state.players[1].hand.length, targetBefore + (spec.value === 'draw4' ? 4 : 0));
+    assert.equal(state.players[1].hand.length, targetBefore);
+    assert.equal(state.pendingDraw,0);assert.equal(state.pendingDrawValue,null);
     assert.equal(rankPlayers(state)[0].id, 'a');
     assert.equal(actParty(state, 'b', 'draw-card'), false);
     assert.equal(actParty(state, 'a', 'continue'), false);
@@ -370,6 +381,8 @@ test('a preselected shortcut applies once at the next fork', () => {
   const state = rig({ hand: [card('ivory', 2), card('jade', 2), card('violet', 3)], position: Number(source)-1 });
   assert.equal(actParty(state, 'a', 'choose-path', { choice: 'shortcut' }), true);
   assert.equal(play(state), true);
+  tickUntil(state,()=>state.boardStage==='choose-chain');
+  assert.equal(actParty(state,'a','end-chain'),true);
   settle(state);
   assert.equal(state.players[0].position, target);
   assert.equal(state.players[0].shortcutChoice, null);
@@ -405,7 +418,7 @@ test('continuous lap bridge loops to space one and movement rewards do not mutat
   assert.equal(state.players[0].handCount, 2);
   assert.equal(state.players[0].laps,1);
   assert.equal(state.players[0].lapPoints,25);
-  assert.equal(state.players[0].sparks,27,'25 lap points plus2 ordinary landing points');
+  assert.equal(state.players[0].sparks,29,'25 lap points plus4 Moon Mint landing points');
   assert.equal(state.lapCelebration.playerId,'a');assert.equal(state.lapCelebration.amount,25);
   const before=state.players[0].sparks;for(let n=0;n<20;n++)stepParty(state,1);
   assert.equal(state.players[0].sparks,before,'the completed step cannot award again');
@@ -414,7 +427,7 @@ test('continuous lap bridge loops to space one and movement rewards do not mutat
 
 test('lap bonus waits for authoritative step completion and ignores special travel',()=>{
   const state=rig({hand:[card('ivory',1),card('jade',2),card('violet',3)],position:47});
-  play(state);stepParty(state,.48);
+  play(state);stepParty(state,BOARD_TIMINGS.play);
   assert.equal(state.boardStage,'moving');assert.equal(state.players[0].laps,0);
   stepParty(state,.17);assert.equal(state.players[0].laps,0);
   stepParty(state,.02);assert.equal(state.players[0].laps,1);assert.equal(state.players[0].lapPoints,25);
@@ -437,7 +450,7 @@ test('two completed normal laps award twice while each traveler can interact onl
   }
   assert.equal(state.currentPlayerId,'b');assert.equal(state.players[0].position,0);
   assert.equal(state.players[0].laps,2);assert.equal(state.players[0].lapPoints,50);
-  assert.equal(state.players[0].sparks,58,'two laps50, three passing high-fives6, final ordinary landing2');
+  assert.equal(state.players[0].sparks,60,'two laps50, three passing high-fives6, final Moon Mint landing4');
   assert.deepEqual(state.players.slice(1).map(player=>player.sparks),[1,1,1]);
   assert.equal(state.encounterSerial,1,'the second lap cannot repeat the same card’s contacts');assertConserved(state);
 });
@@ -469,10 +482,10 @@ test('minigame places pay20/12/8/4 points and rank by the new public total',()=>
   assert.deepEqual(rankPlayers(viewParty(state,'b')).map(player=>player.id),['a','b','c','d']);
 });
 
-test('all twenty-four minigames occur without repeat; party has no arbitrary round cap', () => {
+test('every registered minigame occurs without repeat; party has no arbitrary round cap', () => {
   const state = make({ seed: 9, rounds: 1 });
   const games = [];
-  for (let round = 0; round < 25; round++) {
+  for (let round = 0; round < MINIGAMES.length+1; round++) {
     passCycle(state); games.push(state.nextGame);
     assert.equal(actParty(state, 'a', 'begin-minigame'), true);
     assert.equal(finishMinigame(state, []), true);
@@ -480,9 +493,9 @@ test('all twenty-four minigames occur without repeat; party has no arbitrary rou
     assert.equal(state.phase, 'board');
     assertConserved(state);
   }
-  assert.equal(new Set(games.slice(0, 24)).size, 24);
-  assert.notEqual(games[23], games[24]);
-  assert.equal(state.round, 26);
+  assert.equal(new Set(games.slice(0,MINIGAMES.length)).size,MINIGAMES.length);
+  assert.notEqual(games[MINIGAMES.length-1],games[MINIGAMES.length]);
+  assert.equal(state.round,MINIGAMES.length+2);
 });
 
 test('public per-seat snapshot conceals opponent cards, draw pile, random seed and game roster hands', () => {

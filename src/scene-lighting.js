@@ -4,6 +4,7 @@
  * history, wall clock, randomness or writes to the authoritative game state.
  */
 import {paperPalette} from './paper-palette.js';
+import {surgeryTable,towerLayout,towerBlockPosition} from './boardgame-challenges.js';
 const TAU=Math.PI*2;
 const finite=(n,fallback=0)=>Number.isFinite(n)?n:fallback;
 const clamp=(n,lo=0,hi=1)=>Math.max(lo,Math.min(hi,finite(n)));
@@ -39,6 +40,8 @@ export const LIGHTING_AUDIT=Object.freeze([
  {id:'orbit',mechanics:'Two lanes, reversing, alternating stars and moving thorns',state:'angle; orbitLane; spark; sparkLane; combo; STAR flash',effect:'Moonlight follows the collectible lane; collection glints follow the actor'},
  {id:'cipher',mechanics:'Fading codes, ordered/reversed tumblers, peeking and winding',state:'dial; symbol; reveal; lockClock; CLICK/UNLOCKED flash',effect:'Each accepted tumbler makes a metal glint; low clock and winding change lamp intensity'},
  {id:'shadow',mechanics:'Relic carrying/banking, dash, decoys, pursuit and mist cover',state:'seeker; decoys.life; relics; dash; ALTAR flash',effect:'Keeper light follows pursuit; decoy lights decay with their real remaining lifetime'},
+ {id:'clockwork-surgery',mechanics:'Physical organ extraction through changing channels, shared alarm pressure and steady-tool recovery',state:'pressure; resonance; warning; bell; cursor; carried; alarm; steady; success',effect:'Shared alarm warms the bell, cursor light follows the carried organ, and clean extraction lights its real tray'},
+ {id:'tottering-tower',mechanics:'Shared block claiming, support balance, physical pulls, stacking, gusts, bracing and collapse',state:'lean; instability; stress; wind; warning; phase; blocks; selected block; carried; bracing; success; debris',effect:'Crown and base light follow tower lean and risk, braces cool the actor, and collapse glints move with physical debris'},
 ].filter(entry=>!["memory", "tug", "fishing", "balance", "sorting", "reaction", "potato", "crates", "orbit", "cipher"].includes(entry.id)).concat(["bell-breakers", "relic-launch", "hollow-horde", "rift-ball", "spark-heist", "fuse-festival", "tower-relay", "bellows-boxing", "colossus-wake", "rift-rumble", "crown-clash", "meteor-melee", "spire-kings", "gullet-gala"].map(id=>({id,mechanics:id==='gullet-gala'?'Charged gulps, contested physical pellets, suction and burp defense':'Directional attacks, parries, unique specials and physical objective scoring',state:'player flash/attack/specialAnimation; objective positions; charge/bite',effect:'Generated pixel impacts and restrained paper illumination follow actual interactions'}))).map(Object.freeze));
 
 export function sceneLighting(game={}){
@@ -56,6 +59,42 @@ export function sceneLighting(game={}){
  };
  const pulse=(p,pattern,type,x,y,size=45,color=IVORY)=>{const strength=flash(p,pattern);if(strength){effect(type,x,y,size,strength,1-strength,0,color);point(x,y,strength*1.45,100,color);}return strength;};
  switch(game.id){
+  case 'clockwork-surgery':{
+   const pressure=clamp(s.pressure),resonance=clamp(s.resonance/.65),bell=clamp(s.bell/.55),warning=clamp(s.warning),alarm=Math.max(bell,resonance*.75);
+   profile.ambient.intensity=.48+pressure*.045;profile.key={x:480,y:105-pressure*22,z:235,color:alarm>.3?ROSE:BRONZE,intensity:.82+pressure*.38+alarm*.32};profile.fill.intensity=.24+warning*.13;
+   point(480,95,.16+alarm*1.35+warning*.25,145,alarm>.3?ROSE:BRONZE);
+   if(bell>0)effect('hit',480,95,55,bell*.6,1-bell,0,ROSE);
+   for(const p of players){
+    const table=surgeryTable(slot(p),Math.max(1,players.length)),cursor={x:finite(p.cursor?.x,table.tray.x),y:finite(p.cursor?.y,table.y+200)},held=(p.pieces||[]).find(piece=>piece.id===p.carried),hurt=clamp(p.alarm/.7),steady=clamp(p.steady/1.15),success=clamp(p.success/.65);
+    point(cursor.x,cursor.y-12,.22+(held?.42:0)+hurt*1.3+steady*.55,75+steady*25,hurt?ROSE:steady?COOL:IVORY);
+    if(hurt)effect('hit',cursor.x,cursor.y,62,hurt*.82,1-hurt,0,ROSE);
+    if(steady){effect('shield',cursor.x,cursor.y-12,47,steady*.42,1-steady,0,COOL);profile.fill.intensity=Math.max(profile.fill.intensity,.24+steady*.18);}
+    if(held){effect('dust',cursor.x,cursor.y+9,30,.17+pressure*.19,undefined,0,BRONZE);point(cursor.x,cursor.y,.35+pressure*.26,73,BRONZE);}
+    if(success){point(table.tray.x,table.tray.y,success*1.65,100,IVORY);effect('magic',table.tray.x,table.tray.y-5,62,success*.8,1-success,0,IVORY);}
+    const bounty=(p.pieces||[]).find(piece=>!piece.removed&&piece.kind===s.bounty);if(bounty)point(bounty.x,bounty.y,.16+warning*.1,65,BRONZE);
+   }
+   break;
+  }
+  case 'tottering-tower':{
+   const lean=clamp(s.lean,-1.25,1.25),instability=clamp(s.instability),stress=clamp(s.stress/2),wind=clamp(s.wind,-1,1),warning=clamp(s.warning),collapsing=s.phase==='collapsing',collapse=collapsing?clamp(s.collapseTime/1.5):0,risk=clamp(Math.max(Math.abs(lean)/.72,instability,stress)),braces=clamp(players.filter(p=>p.bracing).length*.25);
+   const source=Array.isArray(s.blocks)&&s.blocks.length?{...s,lean}:null,layout=source?towerLayout(source):{baseX:480,baseY:404,step:29,scale:1,height:9},crown={x:480+lean*layout.height*layout.step*.42,y:404-layout.height*layout.step-11};
+   profile.ambient.intensity=.49-risk*.085;profile.key={x:480+lean*165,y:85+Math.abs(wind)*38,z:260,color:risk>.55||collapsing?ROSE:BRONZE,intensity:.84+risk*.4+Math.abs(wind)*.17+collapse*.15};profile.fill={x:805+wind*70,y:350,z:120,color:COOL,intensity:.24+braces*.23+warning*.1};
+   point(crown.x,crown.y,.21+risk*.85+collapse*.5,110,risk>.55?ROSE:BRONZE);point(480,399,.16+instability*1.2+Math.abs(wind)*.18,145,instability>.5?ROSE:BRONZE);
+   if(instability>.08)effect('dust',480,401,90,instability*.68,undefined,0,BRONZE);
+   if(warning){point(480,85,warning*.85,125,BRONZE);effect('magic',480,85,38,warning*.28,undefined,0,BRONZE);}
+   if(Math.abs(wind)>.02){point(480+Math.sign(wind)*185,190,Math.abs(wind)*.55,130,COOL);effect('dust',480+wind*110,190,55,Math.abs(wind)*.42,undefined,wind<0?Math.PI:0,COOL);}
+   if(collapsing){effect('hit',480+lean*80,315,110,collapse*.82,1-collapse,0,ROSE);for(const debris of (s.debris||[]).slice(0,2))point(debris.x,debris.y,clamp(debris.life/1.5)*.7,85,BRONZE);}
+   for(const p of players){
+    const actorX=players.length===1?220:150+slot(p)*660/Math.max(1,players.length-1),success=clamp(p.success/.55),brace=p.bracing?clamp(p.brace):0;
+    if(brace){point(actorX,409,.5+brace*.68,105,COOL);effect('shield',actorX,403,57,brace*.58,undefined,0,COOL);}
+    if(source&&p.phase==='pulling'){
+     const block=source.blocks.find(b=>!b.removed&&b.id===p.carried);if(block){const at=towerBlockPosition(source,block,layout),pull=clamp(block.pull);point(at.x,at.y,.35+pull*.65+brace*.25,85,brace?COOL:BRONZE);effect('dust',at.x,at.y+6,31,.16+pull*.25,undefined,0,BRONZE);}
+    }
+    if(p.phase==='carrying'){const x=crown.x+clamp(p.stackX,-1.45,1.45)*48*layout.scale;point(x,crown.y-24,.74,95,IVORY);effect('magic',x,crown.y-24,45,.33,undefined,0,IVORY);}
+    if(success){point(crown.x,crown.y+12,success*1.55,110,IVORY);effect('magic',crown.x,crown.y+12,63,success*.78,1-success,0,IVORY);}
+   }
+   break;
+  }
   case 'gullet-gala':{
    profile.key={x:480,y:210,z:220,color:BRONZE,intensity:.95};profile.ambient.intensity=.5;
    for(const p of players){const q=body(p),charge=clamp(p.charge),hit=clamp(p.flash);point(q.x,q.y,.12+charge*.8+hit,100,IVORY);if(hit)effect('magic',q.x,q.y,50,hit,1-hit);if(charge>.2)effect('magic',q.x,q.y,35+charge*25,charge*.45);}

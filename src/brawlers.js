@@ -1,4 +1,5 @@
-import {drawGameHUD} from './game-hud.js';
+import {drawGameHUD,gameFont} from './game-hud.js';
+import {configureBotDifficulty,botControl,botTarget} from './bot-difficulty.js';
 import { OBJECTIVE_GAMES,objectiveLayout,initObjective,objectivePlatformMotion,objectivePvp,objectiveTarget,objectivePlayerHit,objectiveRingout,stepObjective,objectiveBanner,objectivePlayerLabel,drawObjective } from './brawl-objectives.js';
 /** Original paper platform fighters. All simulation state survives a JSON snapshot. */
 export const BRAWL_GAMES = [
@@ -24,7 +25,8 @@ export const SPECIALS=[
   {id:'ink-blink',name:'INK BLINK',windup:.22,active:.15,recovery:.4,cooldown:6.5,damage:20},
   {id:'frost-fan',name:'FROST FAN',windup:.32,active:.4,recovery:.32,cooldown:6.3,damage:11},
 ];
-const isAttacking=p=>p.attack>.04||p.specialAnimation==='active';
+const hasSwing=p=>p.attack>.04||p.specialAnimation==='active';
+const isAttacking=p=>p.stun<=0&&hasSwing(p);
 const attackPower=p=>p.specialAnimation==='active'?SPECIALS[p.character].damage:MOVES[p.move].damage;
 function attackHits(p,q){
   const front=(q.x-p.x)*p.facing,dx=Math.abs(q.x-p.x),dy=q.y-(p.y-36);
@@ -65,30 +67,37 @@ function platforms(id){
   };
   return (objectiveLayout(id)||layouts[id]).map(([x,y,w],id)=>({id,x,y,w,h:18,dx:0,dy:0}));
 }
-export function createBrawl(id,players,seed=1){
+export function createBrawl(id,players,seed=1,options){
   const def=BRAWL_GAMES.find(d=>d.id===id);
   if(!def)throw new Error(`Unknown brawler: ${id}`);
   if(!Array.isArray(players)||players.length<1||players.length>4)throw new Error('Brawlers require 1–4 players');
-  const g={id,time:0,duration:def.duration,done:false,rng:(seed>>>0)||1,players:[],state:{platforms:platforms(id),effects:[],meteors:[],embers:[],nextMeteor:1.6,crown:{holder:null,x:480,y:180,vy:0,lock:0},crownBonus:false,controller:null,contested:false,controlPlatform:3,nextControlPlatform:1,arenaPhase:'calm',arenaWarning:0,wind:0,storm:false,hitstop:0,shake:0,attacks:0,ringouts:0,parries:0}};
+  const g={id,time:0,duration:def.duration,done:false,rng:(seed>>>0)||1,players:[],state:{platforms:platforms(id),effects:[],paperFlights:[],meteors:[],embers:[],nextMeteor:1.6,crown:{holder:null,x:480,y:180,vy:0,lock:0},crownBonus:false,controller:null,contested:false,controlPlatform:3,nextControlPlatform:1,arenaPhase:'calm',arenaWarning:0,wind:0,storm:false,hitstop:0,shake:0,attacks:0,ringouts:0,parries:0}};
   // Copy an explicit public actor schema. Never spread board players: their hands are private.
-  g.players=players.map((p,slot)=>({id:String(p.id),name:String(p.name||`Traveler ${slot+1}`).slice(0,18),character:clamp(Number.isInteger(p.character)?p.character:slot,0,7),bot:!!p.bot,slot,color:COLORS[slot],x:players.length===1?480:260+slot*440/(players.length-1),y:430,vx:0,vy:0,facing:slot%2?-1:1,ground:0,jumps:0,damage:0,damageDealt:0,stocks:id==='rift-rumble'?2:3,eliminated:false,respawn:0,invuln:0,stun:0,shield:100,shielding:false,shieldLock:0,parryWindow:0,parryCooldown:0,parries:0,attack:0,specialCooldown:0,specialCharge:1,specialAnimation:'',specialTime:0,specialProgress:0,specialKind:SPECIALS[clamp(Number.isInteger(p.character)?p.character:slot,0,7)].id,specialHitIds:[],specialX:0,specialY:0,specialOriginX:0,specialUses:0,slow:0,move:'slash',moveUses:{slash:0,uppercut:0,spin:0,dive:0},cooldown:0,hitIds:[],prev:input(),score:0,kos:0,deaths:0,held:0,embers:0,botClock:slot*.137,lastHit:null,lastHitAt:-10,flash:0,message:'',trail:[]}));
+  g.players=players.map((p,slot)=>({id:String(p.id),name:String(p.name||`Traveler ${slot+1}`).slice(0,18),character:clamp(Number.isInteger(p.character)?p.character:slot,0,7),bot:!!p.bot,slot,color:COLORS[slot],x:players.length===1?480:260+slot*440/(players.length-1),y:430,vx:0,vy:0,facing:slot%2?-1:1,ground:0,jumps:0,damage:0,damageDealt:0,stocks:id==='rift-rumble'?2:3,eliminated:false,respawn:0,invuln:0,stun:0,shield:100,shielding:false,shieldLock:0,parryWindow:0,parryCooldown:0,parries:0,attack:0,specialCooldown:0,specialCharge:1,specialAnimation:'',specialTime:0,specialProgress:0,specialKind:SPECIALS[clamp(Number.isInteger(p.character)?p.character:slot,0,7)].id,specialHitIds:[],specialX:0,specialY:0,specialOriginX:0,specialUses:0,slow:0,move:'slash',moveUses:{slash:0,uppercut:0,spin:0,dive:0},cooldown:0,hitIds:[],prev:input(),score:0,kos:0,deaths:0,held:0,embers:0,botClock:slot*.137,lastHit:null,lastHitAt:-10,launchAt:-10,launchVx:0,launchVy:0,landAt:-10,landStrength:0,flash:0,message:'',trail:[]}));
   initObjective(g);
-  return g;
+  return configureBotDifficulty(g,options,seed);
 }
 function notify(p,message){p.message=message;p.flash=.8;}
 function burst(g,x,y,color=GOLD,count=9){
-  for(let j=0;j<count;j++){const angle=j/count*TAU,force=65+random(g)*130;g.state.effects.push({x,y,vx:Math.cos(angle)*force,vy:Math.sin(angle)*force,life:.42,max:.42,color,size:2+random(g)*4});}
+  for(let j=0;j<count;j++){const angle=j/count*TAU,force=65+random(g)*130;g.state.effects.push({x,y,vx:Math.cos(angle)*force,vy:Math.sin(angle)*force,life:.46,max:.46,color,size:3.5+random(g)*5,type:j%3===0?'hit':'dust'});}
   if(g.state.effects.length>100)g.state.effects.splice(0,g.state.effects.length-100);
+}
+function launchBurst(g,p,count=12){
+ const angle=Math.atan2(p.vy,p.vx),force=Math.min(560,Math.hypot(p.vx,p.vy));
+ for(let n=0;n<count;n++){const direction=angle+(random(g)-.5)*1.25,speed=95+force*.35+random(g)*100;g.state.effects.push({x:p.x,y:p.y-42,vx:Math.cos(direction)*speed,vy:Math.sin(direction)*speed,life:.5,max:.5,color:p.color,size:5+random(g)*6,type:n%2?'dust':'hit'});}
+ if(g.state.effects.length>100)g.state.effects.splice(0,g.state.effects.length-100);
 }
 function dropCrown(g,p){
   const c=g.state.crown;if(c.holder!==p.id)return;
   c.holder=null;c.x=p.x;c.y=p.y-74;c.vy=-170;c.lock=.4;notify(p,'CROWN LOST');
 }
 function respawn(g,p){
-  p.x=340+p.slot*90;p.y=126;p.vx=0;p.vy=0;p.damage=0;p.stun=0;p.jumps=0;p.ground=-1;p.invuln=1.8;p.attack=0;p.cooldown=.3;p.shielding=false;p.shield=100;p.parryWindow=0;p.parryCooldown=.3;p.lastHit=null;p.lastHitAt=-10;p.trail=[];p.specialAnimation='';p.specialTime=0;p.slow=0;notify(p,'BACK IN THE FOLD');
+  p.x=340+p.slot*90;p.y=126;p.vx=0;p.vy=0;p.damage=0;p.stun=0;p.jumps=0;p.ground=-1;p.invuln=1.8;p.attack=0;p.cooldown=.3;p.shielding=false;p.shield=100;p.parryWindow=0;p.parryCooldown=.3;p.lastHit=null;p.lastHitAt=-10;p.launchAt=-10;p.landAt=-10;p.trail=[];p.specialAnimation='';p.specialTime=0;p.specialProgress=0;p.slow=0;notify(p,'BACK IN THE FOLD');
 }
 function ringout(g,p){
   objectiveRingout(g,p,objectiveApi);dropCrown(g,p);g.state.ringouts++;p.deaths++;p.stocks=Math.max(0,p.stocks-1);p.shielding=false;p.attack=0;p.specialAnimation='';p.specialTime=0;
+  const flights=g.state.paperFlights||(g.state.paperFlights=[]);
+  flights.push({id:'paper-flight-'+g.state.ringouts,playerId:p.id,character:p.character,name:p.name,color:p.color,slot:p.slot,x:clamp(p.x,65,895),y:clamp(p.y,140,430),dx:Math.sign(p.vx)||(p.x<480?-1:1),dy:Math.sign(p.vy)||-1,toward:(p.slot+p.deaths)%2===0,at:g.time,duration:.82});if(flights.length>8)flights.shift();
   const killer=g.players.find(q=>q.id===p.lastHit&&q.id!==p.id&&g.time-p.lastHitAt<6);
   if(killer){killer.kos++;killer.score+=g.id==='meteor-melee'?25:12;notify(killer,'RING OUT!');}
   p.score=Math.max(0,p.score-(g.id==='meteor-melee'?8:3));
@@ -115,7 +124,7 @@ function botInput(g,p,dt){
     const reachable=g.state.platforms.filter(b=>b.y<p.y-35&&b.y>=p.y-125).sort((a,b)=>Math.abs(a.x+a.w/2-p.x)-Math.abs(b.x+b.w/2-p.x));
     if(reachable[0])target={x:reachable[0].x+reachable[0].w/2,y:reachable[0].y};
   }
-  i.left=p.x>target.x+18;i.right=p.x<target.x-18;
+  target=botTarget(g,p,target);i.left=p.x>target.x+18;i.right=p.x<target.x-18;
   const inJumpWindow=p.botClock% .7<.09;
   i.up=inJumpWindow&&((target.y<p.y-38&&Math.abs(p.x-target.x)<150)||(p.ground<0&&p.vy>35&&(p.x<205||p.x>755))||(rival&&Math.abs(rival.x-p.x)<125&&p.botClock%1.4<.09));
   if(p.ground<0&&p.y>385){i.left=p.x>560;i.right=p.x<400;i.up=p.jumps<2&&!p.prev.up;}
@@ -179,7 +188,7 @@ function strike(g,attacker,victim,meteor=false){
   const shielded=victim.shielding&&victim.shield>0;
   if(shielded&&victim.parryWindow>0){
     victim.parryWindow=0;victim.parryCooldown=.72;victim.parries++;g.state.parries++;victim.score+=meteor?6:3;victim.shield=Math.min(100,victim.shield+12);victim.invuln=.13;victim.cooldown=0;
-    if(attacker){attacker.attack=0;if(attacker.specialAnimation){attacker.specialAnimation='recovery';attacker.specialTime=SPECIALS[attacker.character].recovery;}attacker.stun=.32;attacker.cooldown=Math.max(attacker.cooldown,.4);attacker.vx=-attacker.facing*210;notify(attacker,'PARRIED');}
+    if(attacker){attacker.attack=0;if(attacker.specialAnimation){attacker.specialAnimation='recovery';attacker.specialTime=SPECIALS[attacker.character].recovery;attacker.specialProgress=0;}attacker.stun=.32;attacker.cooldown=Math.max(attacker.cooldown,.4);attacker.vx=-attacker.facing*210;notify(attacker,'PARRIED');}
     notify(victim,meteor?'METEOR REFLECTED +6':'PERFECT PARRY');g.state.hitstop=.11;g.state.shake=4;burst(g,victim.x,victim.y-36,'#edfff4',18);return 'parried';
   }
   const move=meteor?'meteor':attacker.move;
@@ -193,6 +202,7 @@ function strike(g,attacker,victim,meteor=false){
   if(move==='dive'){victim.vx*=.5;victim.vy=(360+victim.damage*2.2)*(shielded?.2:1);}
   if(attacker?.specialAnimation==='active'&&!shielded){const kind=attacker.specialKind;if(kind==='wing-gust')victim.vy=-580;if(kind==='magnet-burst'){victim.vx=Math.sign(victim.x-attacker.x)*560;victim.vy=-380;}if(kind==='ground-slam'){victim.vy=-570;victim.vx*=.7;}if(kind==='thorn-grasp'){victim.slow=1.6;victim.vx=-Math.sign(victim.x-attacker.x)*150;}if(kind==='frost-fan'){victim.slow=2.4;victim.vx*=.8;}}
   victim.stun=shielded?.065:Math.min(.52,.15+victim.damage*.0018);
+  if(!shielded){victim.launchAt=g.time;victim.launchVx=victim.vx;victim.launchVy=victim.vy;launchBurst(g,victim,meteor?15:12);}
   victim.ground=-1;
   if(shielded){victim.shield=Math.max(0,victim.shield-23);notify(victim,'PAPER GUARD');if(victim.shield===0){victim.shieldLock=1.4;victim.stun=.8;notify(victim,'GUARD BROKEN');}}
   else{dropCrown(g,victim);notify(victim,move==='uppercut'?'UPPERCUT!':move==='dive'?'PAPER SPIKE!':`${Math.round(victim.damage)}%`);}
@@ -223,12 +233,13 @@ export function stepBrawl(g,inputs={},dt=1/60){
   dt=Math.min(dt,.05);g.time=Math.min(g.duration,g.time+dt);
   const s=g.state;s.hitstop=Math.max(0,s.hitstop-dt);s.shake=Math.max(0,s.shake-dt*40);
   for(const f of s.effects){f.life-=dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=250*dt;}s.effects=s.effects.filter(f=>f.life>0);
+  if(s.paperFlights)s.paperFlights=s.paperFlights.filter(f=>g.time-f.at<f.duration);
   updateArena(g,dt);
   for(const p of g.players){
     p.flash=Math.max(0,p.flash-dt);p.invuln=Math.max(0,p.invuln-dt);p.cooldown=Math.max(0,p.cooldown-dt);p.attack=Math.max(0,p.attack-dt);p.stun=Math.max(0,p.stun-dt);p.shieldLock=Math.max(0,p.shieldLock-dt);p.parryWindow=Math.max(0,p.parryWindow-dt);p.parryCooldown=Math.max(0,p.parryCooldown-dt);p.slow=Math.max(0,p.slow-dt);p.specialCooldown=Math.max(0,p.specialCooldown-dt);p.specialCharge=1-p.specialCooldown/SPECIALS[p.character].cooldown;
     if(p.eliminated)continue;
     if(p.respawn>0){p.respawn=Math.max(0,p.respawn-dt);if(p.respawn===0)respawn(g,p);continue;}
-    const i=p.bot?botInput(g,p,dt):input(inputs[p.id]);
+    const i=p.bot?botControl(g,p,botInput(g,p,dt),dt):input(inputs[p.id]);
     updateSpecial(g,p,i,dt);
     const diving=i.down&&i.action&&p.ground<0;
     p.shielding=i.down&&!diving&&!p.specialAnimation&&p.shield>2&&p.shieldLock<=0&&p.attack<=0&&p.stun<=.07;
@@ -249,7 +260,8 @@ export function stepBrawl(g,inputs={},dt=1/60){
     if(p.specialAnimation==='active'&&p.specialKind==='courier-cut')p.vx=p.facing*610;
     if(p.specialAnimation==='active'&&p.specialKind==='ground-slam'&&p.ground<0)p.vy=Math.max(p.vy,700);
     if(s.wind&&p.invuln<=0)p.vx+=s.wind*dt*(p.shielding?.15:1);
-    const oldY=p.y;p.vy=Math.min(880,p.vy+1080*dt);p.x+=p.vx*dt;p.y+=p.vy*dt;p.ground=-1;land(p,oldY,s.platforms);
+    const oldY=p.y,oldGround=p.ground;p.vy=Math.min(880,p.vy+1080*dt);const landingSpeed=p.vy;p.x+=p.vx*dt;p.y+=p.vy*dt;p.ground=-1;land(p,oldY,s.platforms);
+    if(p.ground>=0&&oldGround<0&&landingSpeed>65){p.landAt=g.time;p.landStrength=clamp(landingSpeed/660,.18,1);burst(g,p.x,p.y,p.color,5);}
     if(p.ground>=0&&p.attack>0&&p.move==='dive'){p.attack=0;burst(g,p.x,p.y,p.color,12);s.shake=Math.max(s.shake,3);}
     for(const f of p.trail)f.life-=dt;p.trail=p.trail.filter(f=>f.life>0);
     if(Math.abs(p.vx)>340)p.trail.push({x:p.x,y:p.y,life:.15});if(p.trail.length>8)p.trail.shift();
@@ -258,8 +270,11 @@ export function stepBrawl(g,inputs={},dt=1/60){
     if(g.id==='meteor-melee')p.score+=dt*1.5;
   }
   // Resolve directional hits once per regular swing or special activation.
-  if(objectivePvp(g))for(const p of g.players){if(!active(p)||!isAttacking(p))continue;for(const q of g.players){
-    if(!isAttacking(p))break;
+  const contactAttackers=objectivePvp(g)?g.players.filter(p=>active(p)&&isAttacking(p)):[];
+  for(const p of contactAttackers){if(!active(p))continue;for(const q of g.players){
+    // Capture eligibility before any contacts, so simultaneous fresh swings
+    // may trade without seat-order advantage. A parry still cancels the swing.
+    if(!hasSwing(p))break;
     const ids=p.specialAnimation==='active'?p.specialHitIds:p.hitIds;
     if(p.id===q.id||!active(q)||q.invuln>0||ids.includes(q.id))continue;
     if(attackHits(p,{x:q.x,y:q.y-36})){ids.push(q.id);strike(g,p,q);}
@@ -271,7 +286,7 @@ export function stepBrawl(g,inputs={},dt=1/60){
     const b=s.platforms[s.controlPlatform];const owners=g.players.filter(p=>active(p)&&p.ground===b.id&&Math.abs(p.x-(b.x+b.w/2))<b.w*.43);s.contested=owners.length>1;s.controller=owners.length===1?owners[0].id:null;
     if(owners.length===1){owners[0].score+=dt*12;owners[0].held+=dt;}
   }
-  if(g.id==='rift-rumble'&&g.players.length>1&&g.players.filter(p=>!p.eliminated).length<=1)g.done=true;
+  if(g.id==='rift-rumble'&&g.players.filter(p=>!p.eliminated).length<=(g.players.length>1?1:0))g.done=true;
   if(g.time>=g.duration)g.done=true;
   return g;
 }
@@ -281,8 +296,20 @@ export function getBrawlResults(g){
   return g.players.map(p=>({id:p.id,score:Math.max(0,Math.round(g.id==='rift-rumble'?p.stocks*10000+p.kos*1000+Math.min(999,p.damageDealt*.1+p.score):p.score))})).sort((a,b)=>b.score-a.score);
 }
 
+/** Cosmetic launch depth changes size around the exact gameplay foot anchor. */
+export function brawlPaperBodyReaction(g,p){
+ const age=g.time-(p.launchAt??-10),launch=age>=0&&age<.38?Math.sin(age/.38*Math.PI):0,speed=Math.hypot(p.launchVx||0,p.launchVy||0),power=clamp(speed/850,0,1),vertical=Math.abs(p.launchVy||0)>Math.abs(p.launchVx||0);
+ const landingAge=g.time-(p.landAt??-10),landing=landingAge>=0&&landingAge<.3?(1-landingAge/.3)**2*(p.landStrength||0):0;
+ return {size:84*(1+launch*power*.36),scaleX:1+launch*power*(vertical?-.15:.2)+landing*.18,scaleY:1+launch*power*(vertical?.22:-.12)-landing*.12,land:landing};
+}
+/** Serialized KO paper puppet, independent of score/stock/physics state. */
+export function sampleBrawlPaperFlight(flight,time){
+ const progress=clamp((time-flight.at)/flight.duration,0,1),toward=flight.toward;
+ return {progress,x:flight.x+(toward?(480-flight.x)*progress*.5:flight.dx*170*progress),y:flight.y-160*progress+Math.sin(progress*Math.PI)*-45,scale:toward?.9+2.6*(1-(1-progress)**2):1.12*(1-progress)**1.45+.1,alpha:(1-progress)**1.1,rotation:flight.dx*progress*1.45,scaleX:Math.cos(progress*Math.PI*2)*(toward?.18:.12)+.9,scaleY:1+Math.sin(progress*Math.PI)*.28};
+}
+
 function label(ctx,value,x,y,size=14,color=PAPER,align='center',outline='#211d18'){
-  ctx.font='bold '+size+'px Georgia';ctx.textAlign=align;ctx.fillStyle=color;ctx.strokeStyle=outline;ctx.lineWidth=3;ctx.strokeText(value,x,y);ctx.fillText(value,x,y);
+  ctx.font=gameFont(size);ctx.textAlign=align;ctx.fillStyle=color;ctx.strokeStyle=outline;ctx.lineWidth=3;ctx.strokeText(value,x,y);ctx.fillText(value,x,y);
 }
 function paperPanel(ctx,x,y,w,h){
   ctx.save();ctx.fillStyle='#211a1644';ctx.fillRect(x+3,y+4,w,h);
@@ -297,8 +324,8 @@ function paperPanel(ctx,x,y,w,h){
   ctx.fillStyle='#a8967340';ctx.fillRect(x+5,y+8,1,h-16);ctx.fillRect(x+w-6,y+8,1,h-16);ctx.restore();
 }
 function paperFx(ctx,h,type,x,y,size,time,options={}){
-  ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.imageSmoothingEnabled=false;
-  h.fx?.(ctx,type,Math.round(x),Math.round(y),size,time,{...options,alpha:1});
+  ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  h.fx?.(ctx,type,x,y,size,time,{...options,alpha:1});
   ctx.restore();
 }
 function platformArt(ctx,b,time,isActive,h){
@@ -364,6 +391,14 @@ export function drawBrawl(ctx,g,h={}){
     ctx.save();ctx.globalAlpha=Math.min(1,e.life);h.prop?.(ctx,'spark',e.x,e.y+Math.sin(g.time*5+e.x)*2,26,g.time*.6);ctx.restore();
   }
   drawObjective(ctx,g,h,{label,fx:paperFx});
+  for(const flight of s.paperFlights||[]){
+    const pose=sampleBrawlPaperFlight(flight,g.time);if(pose.alpha<=0)continue;
+    ctx.save();ctx.globalAlpha*=pose.alpha;
+    const puppet={id:flight.id,character:flight.character,name:flight.name,damage:0,score:0,ground:-1,vx:flight.dx*160,vy:-200,facing:flight.dx,prev:{}};
+    h.character?.(ctx,puppet,pose.x,pose.y,84*pose.scale,{time:g.time,grounded:false,vy:-200,hurt:true,rotation:pose.rotation,scaleX:pose.scaleX,scaleY:pose.scaleY,specialAnimation:'',specialProgress:0,paperFlight:true});
+    for(let n=0;n<3;n++)paperFx(ctx,h,n===0?'hit':'magic',pose.x-flight.dx*n*25,pose.y-45+n*8,(95+n*18)*Math.min(1.7,pose.scale),g.time+n*.07,{alpha:.75,progress:pose.progress,rotation:pose.rotation});
+    ctx.restore();
+  }
   for(const p of g.players){
     if(p.eliminated)continue;
     if(p.respawn>0){
@@ -373,18 +408,18 @@ export function drawBrawl(ctx,g,h={}){
     for(let n=0;n<p.trail.length;n+=2){
       const trail=p.trail[n];paperFx(ctx,h,'dust',trail.x,trail.y-24,17+trail.life*35,g.time+n*.04,{alpha:trail.life*3.4});
     }
-    const grounded=p.ground>=0,attacking=p.attack>0,move=MOVES[p.move];
+    const grounded=p.ground>=0,attacking=p.attack>0&&p.stun<=0,move=MOVES[p.move],reaction=brawlPaperBodyReaction(g,p);
     const attack=attacking?p.attack/move.duration:0;
-    const land=grounded&&p.move==='dive'&&p.attack===0?clamp((p.cooldown-(move.cooldown-.18))/.18,0,1):0;
+    const land=Math.max(reaction.land,grounded&&p.move==='dive'&&p.attack===0?clamp((p.cooldown-(move.cooldown-.18))/.18,0,1):0);
     const squash=p.shielding?.22:land>0?land*.28:attacking?Math.sin(attack*Math.PI)*.24:!grounded?p.vy<0?-.19:-.09:Math.abs(p.vx)>40?Math.sin(g.time*16+p.slot)*.055:0;
     if(p.shielding)paperFx(ctx,h,'shield',p.x,p.y-47,p.parryWindow>0?130:118,g.time,{alpha:p.parryWindow>0?.96:.76});
-    if(grounded&&Math.abs(p.vx)>65)paperFx(ctx,h,'dust',p.x-p.facing*17,p.y-3,23,g.time+p.slot*.1,{alpha:.55});
-    if(land>0)paperFx(ctx,h,'dust',p.x,p.y-4,56,g.time,{alpha:land});
+    if(grounded&&Math.abs(p.vx)>65)paperFx(ctx,h,'dust',p.x-p.facing*17,p.y-3,32,g.time+p.slot*.1,{alpha:.64});
+    if(land>0)paperFx(ctx,h,'dust',p.x,p.y-4,82,g.time,{alpha:land});
     ctx.save();if(p.invuln>0)ctx.globalAlpha=.5+Math.abs(Math.sin(g.time*18))*.5;
-    h.character?.(ctx,p,p.x,p.y,72,{
+    h.character?.(ctx,p,p.x,p.y,reaction.size,{
       time:g.time,static:s.hitstop>0,moving:Math.abs(p.vx)>35&&grounded,
       attack,move:p.move,specialAnimation:p.specialAnimation,specialKind:p.specialKind,specialProgress:p.specialProgress,grounded,vy:p.vy,hurt:p.stun>0,land,squash,facing:p.facing,
-      rotation:p.stun>0?clamp(p.vx/2100,-.4,.4):!grounded?p.vx/2400:0
+      scaleX:reaction.scaleX,scaleY:reaction.scaleY,rotation:p.stun>0?clamp(p.vx/2100,-.4,.4):!grounded?p.vx/2400:0
     });
     ctx.restore();
     if(attacking){
@@ -414,7 +449,7 @@ export function drawBrawl(ctx,g,h={}){
   // Atlas particles keep hits crisp at the same pixel scale as the stage effects.
   for(let n=0;n<s.effects.length;n+=2){
     const f=s.effects[n],progress=1-f.life/f.max;
-    paperFx(ctx,h,'dust',f.x,f.y,Math.max(10,f.size*3.2),g.time+n*.013,{alpha:f.life/f.max,progress,rotation:n*.71});
+    paperFx(ctx,h,f.type||'dust',f.x,f.y,Math.max(17,f.size*3.8),g.time+n*.013,{alpha:f.life/f.max,progress,rotation:Math.atan2(f.vy,f.vx)});
   }
   ctx.restore();
   // Resolve the material layer while the arena is still unobscured. The outer

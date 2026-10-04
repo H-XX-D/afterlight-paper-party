@@ -34,7 +34,7 @@ try{
  await guest.evaluate(()=>{
   const n=window.afterlight.network,c=n.hostConnection.conn,send=c.send,onState=n.onState;
   window.__queued=[];window.__restore=()=>{c.send=send;n.onState=onState};
-  c.send=function(d,...a){if(d.t!=='input')return send.call(c,d,...a);window.__queued.push({q:d.q,b:d.b,queuedAt:performance.now()});setTimeout(()=>send.call(c,d,...a),350)};
+  c.send=function(d,...a){const packet=typeof d==='string'?JSON.parse(d):d;if(packet.t!=='input')return send.call(c,d,...a);window.__queued.push({q:packet.q,b:packet.b,queuedAt:performance.now()});setTimeout(()=>send.call(c,d,...a),350)};
   n.onState=(...args)=>setTimeout(()=>onState(...args),350);
  });
  const started=Date.now();await guest.keyboard.down('ArrowRight');await guest.waitForTimeout(100);

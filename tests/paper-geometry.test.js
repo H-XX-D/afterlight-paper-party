@@ -41,9 +41,9 @@ test('alpha contours preserve a physical portal opening and reject detached flec
  const empty=source(8,8);empty.data.fill(0);assert.deepEqual(paperAlphaContours(empty),{outer:[],holes:[],pixelArea:0});
 });
 test('all24 original realm illustrations yield bounded unique relief and four shaped layers',async()=>{
- const manifest=JSON.parse(await readFile(new URL('../assets-manifest.json',import.meta.url))),scenes=manifest.images.filter(x=>x.name.startsWith('scene-'));assert.equal(scenes.length,24);const signatures=new Set();
+ const manifest=JSON.parse(await readFile(new URL('../assets-manifest.json',import.meta.url))),scenes=manifest.images.filter(x=>x.name.startsWith('scene-'));assert.equal(scenes.length,26);const signatures=new Set();
  for(const asset of scenes){const{data,info}=await sharp(fileURLToPath(new URL('../public/assets/'+asset.file,import.meta.url))).resize(192,108).ensureAlpha().raw().toBuffer({resolveWithObject:true}),image={data,width:info.width,height:info.height},r=paperReliefData(image);validGeometry(r);assert.ok(r.depthRange[1]-r.depthRange[0]>.45,asset.name+' has physical relief');signatures.add(Array.from(r.positions.filter((_,i)=>i%3===2)).map(n=>n.toFixed(2)).join(','));for(const side of[-1,1])for(const near of[false,true])validGeometry(paperWingData(image,{side,near}));}
- assert.equal(signatures.size,24,'every realm derives depth from its own artwork');
+ assert.equal(signatures.size,26,'every realm derives depth from its own artwork');
 });
 test('invalid source and nonfinite geometry dimensions fail before GPU upload',()=>{
  assert.throws(()=>paperReliefData({width:1,height:2,data:[]}),RangeError);assert.throws(()=>paperReliefData(source(),{depth:NaN}),RangeError);assert.throws(()=>paperWingData(source(),{thickness:Infinity}),RangeError);

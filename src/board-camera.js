@@ -1,6 +1,6 @@
 /** A shared-state camera: no frame history, wall clock, or party mutation. */
 export const BOARD_VIEWPORT = Object.freeze({width:960,height:540});
-const DEFAULT_TIMINGS = Object.freeze({play:.48,move:.18,shortcut:.62,transport:1.2,event:1.15});
+const DEFAULT_TIMINGS = Object.freeze({play:.78,move:.18,shortcut:.62,transport:1.2,event:1.15});
 const clamp=(value,lo,hi)=>Math.max(lo,Math.min(hi,value));
 const ease=value=>{const t=clamp(value,0,1);return t*t*(3-2*t)};
 
@@ -67,8 +67,8 @@ export function boardCamera(state,{spaces,routePoint,timings=DEFAULT_TIMINGS,wid
  const traveler=player?sampleBoardTraveler(state,player,{spaces,routePoint,timings}):null;
  let weight=0;
  if(!overview&&state.phase==='board'&&traveler){
-  if(state.boardStage==='playing-card')weight=ease(1-(Number(state.timer)||0)/timings.play);
-  else if(['moving','transport','choose-path','choose-event'].includes(state.boardStage))weight=1;
+  if(state.boardStage==='playing-card')weight=portrait?ease(1-(Number(state.timer)||0)/timings.play):0;
+  else if(['moving','transport','choose-path','choose-event'].includes(state.boardStage))weight=!portrait&&Number.isFinite(state.cardTravelStartedAt)?ease(((state.clock||0)-state.cardTravelStartedAt)/.3):1;
   else if(state.boardStage==='event'){
    const duration=state.storyEvent?.dwellDuration||timings.event;
    const elapsed=clamp(duration-(Number(state.timer)||0),0,duration),pullback=Math.min(.66,duration*.6);

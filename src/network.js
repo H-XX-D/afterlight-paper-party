@@ -6,7 +6,7 @@ const PREFIX = 'afterlight-v1-';
 const MAX_PLAYERS = 4;
 const INPUT_KEYS = ['left', 'right', 'up', 'down', 'action', 'special'];
 const CARD_COLORS = ['ivory', 'jade', 'violet', 'ember'];
-const SIMPLE_ACTIONS = new Set(['draw-card', 'pass', 'call-last', 'item', 'begin-minigame', 'continue']);
+const SIMPLE_ACTIONS = new Set(['draw-card', 'pass', 'call-last', 'item', 'begin-minigame', 'continue','end-chain']);
 const noop = () => {};
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const packet = (t, fields = {}) => ({ v: VERSION, t, ...fields });
@@ -17,17 +17,35 @@ function profileOf(value = {}) {
   if (!isRecord(value)) value = {};
   const name = (typeof value.name === 'string' ? value.name : 'Wanderer')
     .replace(/<[^>]*>/g, '').replace(/[<>\u0000-\u001f\u007f]/g, '').trim().slice(0, 18) || 'Wanderer';
-  const character = Number.isInteger(value.character) && value.character >= 0 && value.character < 16
-    ? value.character
-    : typeof value.character === 'string' && /^[a-zA-Z0-9_-]{1,32}$/.test(value.character)
-      ? value.character : 0;
+  const character = Number.isInteger(value.character) && value.character >= 0 && value.character < 8
+    ? value.character : 0;
   return { name, character };
+}
+
+function lobbyProfilePatch(value) {
+  try {
+    if (!isRecord(value) || !boundedJSON(value, 512, 2, 8)) return null;
+    const keys = Object.keys(value);
+    if (!keys.length || keys.some(key => !['name', 'character'].includes(key))) return null;
+    if ('name' in value && (typeof value.name !== 'string' || value.name.length > 256)) return null;
+    if ('character' in value && (!Number.isInteger(value.character) || value.character < 0 || value.character > 7)) return null;
+    const patch = {};
+    if ('name' in value) patch.name = profileOf({ name: value.name }).name;
+    if ('character' in value) patch.character = value.character;
+    return patch;
+  } catch { return null; }
 }
 
 function validInput(input) {
   if (!isRecord(input) || Object.keys(input).some(key => !INPUT_KEYS.includes(key))) return null;
   if (INPUT_KEYS.some(key => input[key] !== undefined && typeof input[key] !== 'boolean')) return null;
   return Object.fromEntries(INPUT_KEYS.map(key => [key, Boolean(input[key])]));
+}
+
+function wirePacket(data, maxLength) {
+  if (typeof data !== 'string') return data;
+  if (data.length > maxLength) return null;
+  try { return JSON.parse(data); } catch { return null; }
 }
 
 // Reject cycles, excessive nesting, non-finite numbers, and exotic objects before
@@ -97,12 +115,16 @@ export class PartyNetwork {
     this.timeoutMs = options.timeoutMs ?? 15000;
     this.heartbeatMs = options.heartbeatMs ?? 2500;
     this.staleMs = options.staleMs ?? 20000;
-    this.now = options.now ?? Date.now;
+    this.now = options.now ?? (() => globalThis.performance?.now?.() ?? Date.now());
+    this._lastHeartbeatAt = null;
+    this._heartbeatLateness = 0;
+    this._heartbeatGraceCount = 0;
     this.role = 'offline';
     this.id = '';
     this.code = '';
     this.players = [];
     this.locked = false;
+    this.started = false;
     this.peer = null;
     this.connections = new Map();
     this.pending = new Set();
@@ -166,7 +188,9 @@ export class PartyNetwork {
           this.awaiting = null;
           error ? reject(error) : resolve();
         };
-        const conn = this.peer.connect(PREFIX + normalized, { reliable: true, serialization: 'json', label: 'afterlight-v1' });
+        // JSON channels reject packets at 16,300 bytes. Full public game
+        // snapshots can exceed that; PeerJS binary supplies chunk/reassembly.
+        const conn = this.peer.connect(PREFIX + normalized, { reliable: true, serialization: 'binary', label: 'afterlight-v1' });
         this.hostConnection = { conn, lastSeen: this.now(), admitted: false };
         conn.on('open', () => {
           if (session === this.session) this._send(conn, packet('hello', { profile: profileOf(profile) }));
@@ -238,14 +262,16 @@ export class PartyNetwork {
   _acceptConnection(conn, session) {
     // Bound half-open handshakes independently of confirmed player slots.
     if (this.pending.size >= 8) { conn.close(); return; }
-    const record = { conn, admitted: false, lastSeen: this.now(), windowStart: this.now(), inputs: 0, actions: 0 };
+    const record = { conn, admitted: false, lastSeen: this.now(), windowStart: this.now(), inputs: 0, actions: 0, profiles: 0 };
     this.pending.add(record);
     const timer = this._later(() => { if (!record.admitted) this._removeGuest(record); }, this.timeoutMs);
     record.timer = timer;
     conn.on('data', data => {
       if (session !== this.session || record.removed) return;
+      data = wirePacket(data, 4096);
       if (!isRecord(data) || data.v !== VERSION || typeof data.t !== 'string' || !boundedJSON(data, 4096, 7, 150)) return;
       record.lastSeen = this.now();
+      delete record.heartbeatGraceUntil;
       if (!record.admitted) {
         if (data.t !== 'hello' || !isRecord(data.profile)) return;
         if (this.locked) { this._reject(record, 'This party has already started. Join the next game from the lobby.'); return; }
@@ -256,7 +282,7 @@ export class PartyNetwork {
         this.pending.delete(record);
         this.connections.set(conn.peer, record);
         this.players.push({ id: conn.peer, ...profileOf(data.profile), bot: false });
-        this._send(conn, packet('welcome', { players: this.players, hostId: this.id }));
+        this._send(conn, packet('welcome', { players: this.players, hostId: this.id, locked: this.locked, started: this.started }));
         this._publishPlayers();
         if (this.lastState !== null) this._sendSnapshot(conn);
         return;
@@ -268,7 +294,7 @@ export class PartyNetwork {
         return;
       }
       if (this.now() - record.windowStart >= 1000) {
-        record.windowStart = this.now(); record.inputs = 0; record.actions = 0;
+        record.windowStart = this.now(); record.inputs = 0; record.actions = 0; record.profiles = 0;
       }
       if (data.t === 'input' && ++record.inputs <= 90) {
         if (this._deliverInput(conn.peer, data, 'host')) {
@@ -278,6 +304,10 @@ export class PartyNetwork {
         }
       } else if (data.t === 'action' && ++record.actions <= 15 && this._validAction(data.action, data.payload)) {
         this.onAction({ playerId: conn.peer, action: data.action, payload: data.payload });
+      } else if (data.t === 'profile' && ++record.profiles <= 6 && !this.locked && !this.started) {
+        if (Object.keys(data).some(key => !['v', 't', 'profile'].includes(key)) || !boundedJSON(data, 768, 3, 20)) return;
+        const patch = lobbyProfilePatch(data.profile);
+        if (patch) this._applyProfile(conn.peer, patch);
       }
     });
     conn.on('close', () => { if (session === this.session) this._removeGuest(record, false); });
@@ -285,8 +315,10 @@ export class PartyNetwork {
   }
 
   _guestData(data) {
+    data = wirePacket(data, 262144);
     if (!this.hostConnection || !isRecord(data) || data.v !== VERSION || !boundedJSON(data, 262144, 14)) return;
     this.hostConnection.lastSeen = this.now();
+    delete this.hostConnection.heartbeatGraceUntil;
     if (data.t === 'reject' && typeof data.reason === 'string') { this._hostLost(data.reason.slice(0, 180)); return; }
     if (data.t === 'welcome' || data.t === 'roster') {
       const roster = data.players;
@@ -296,6 +328,8 @@ export class PartyNetwork {
       if (!roster.some(player => player.id === PREFIX + this.code)) return;
       if (!this.hostConnection.admitted && data.t !== 'welcome') return;
       this.players = roster.map(player => ({ id: player.id, ...profileOf(player), bot: false }));
+      if (typeof data.locked === 'boolean') this.locked = data.locked;
+      if (data.started === true) this.started = true;
       if (data.t === 'welcome') { this.hostConnection.admitted = true; this.awaiting?.(); }
       this.onPlayers(this.players.map(player => ({ ...player })));
       this._syncMesh();
@@ -311,6 +345,7 @@ export class PartyNetwork {
       if (!isRecord(state) || !boundedJSON(state, 260000)) return;
       this.receivedSnapshot = JSON.parse(JSON.stringify(state));
       this.receivedSnapshotSequence = data.s;
+      if (state.phase !== 'lobby') this.started = true;
       this.onState(state, { acks: data.a || {}, inputs: data.i || {}, snapshotSeq: data.s, gameKey: data.k || '', receivedAt: this.now() });
     } else if (data.t === 'ping') this._send(this.hostConnection.conn, packet('pong'));
   }
@@ -324,7 +359,7 @@ export class PartyNetwork {
         && typeof payload.cardId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(payload.cardId)
         && (payload.color === undefined || CARD_COLORS.includes(payload.color));
     }
-    if(action==='choose-event')return Object.keys(payload).length===1&&['prize','parade','follow','lantern','borrow','gift','bargain','safe','enter','picnic','reverse','wind','shelter','collect'].includes(payload.choice);
+    if(action==='choose-event')return Object.keys(payload).length===1&&['prize','parade','follow','lantern','borrow','gift','bargain','safe','enter','picnic','reverse','wind','shelter','collect','repair','donate','build','brace'].includes(payload.choice);
     return action === 'choose-path' && Object.keys(payload).length === 1 && ['main', 'shortcut'].includes(payload.choice);
   }
 
@@ -332,6 +367,26 @@ export class PartyNetwork {
     if (!this._validAction(action, payload)) return false;
     if (this.role === 'host') { this.onAction({ playerId: this.id, action, payload }); return true; }
     return this.role === 'guest' && this.hostConnection?.admitted ? this._send(this.hostConnection.conn, packet('action', { action, payload })) : false;
+  }
+
+  /** Own-player lobby edit. Guests wait for the host's roster instead of
+   * changing their local identity optimistically. True means applied/sent. */
+  updateProfile(profile) {
+    const patch = lobbyProfilePatch(profile);
+    if (!patch || this.locked || this.started || !this.id) return false;
+    if (this.role === 'host') return this._applyProfile(this.id, patch);
+    return this.role === 'guest' && this.hostConnection?.admitted
+      ? this._send(this.hostConnection.conn, packet('profile', { profile: patch })) : false;
+  }
+
+  _applyProfile(playerId, patch) {
+    if (this.role !== 'host' || this.locked || this.started) return false;
+    const player = this.players.find(candidate => candidate.id === playerId);
+    if (!player) return false;
+    if (player.name === (patch.name ?? player.name) && player.character === (patch.character ?? player.character)) return true;
+    Object.assign(player, patch);
+    this._publishPlayers();
+    return true;
   }
 
   sendInput(input, { immediate = false } = {}) {
@@ -417,6 +472,7 @@ export class PartyNetwork {
     // A private hand must never fall back to a public/raw broadcast by mistake.
     if (!projector && Array.isArray(state.players) && state.players.some(player => Array.isArray(player?.hand))) return false;
     this.lastState = state;
+    if (state.phase !== 'lobby') this.started = true;
     this.stateProjector = projector;
     this.snapshotSequence++;
     for (const { conn } of this.connections.values()) this._sendSnapshot(conn, true);
@@ -450,19 +506,27 @@ export class PartyNetwork {
     }
   }
 
-  setLocked(locked) { this.locked = Boolean(locked); }
+  setLocked(locked) {
+    const value = Boolean(locked);
+    if (this.locked === value) return;
+    this.locked = value;
+    if (this.role === 'host') this._publishPlayers();
+  }
 
   _send(conn, data, transient = false) {
     if (!conn?.open) return false;
     // Drop replaceable snapshots and held-input samples when a link is congested.
     if (transient && ((conn.bufferSize ?? 0) > 0 || (conn.dataChannel?.bufferedAmount ?? 0) > 32768)) return false;
-    try { conn.send(data); return true; } catch { return false; }
+    // BinaryPack's number encoding can alter floating-point game values. Pack
+    // the exact JSON string instead: binary still chunks it, JSON preserves the
+    // authoritative numbers, and both endpoints validate the decoded packet.
+    try { conn.send(conn.serialization === 'binary' ? JSON.stringify(data) : data); return true; } catch { return false; }
   }
 
   _publishPlayers() {
     const players = this.players.map(player => ({ ...player }));
     this.onPlayers(players);
-    for (const { conn } of this.connections.values()) this._send(conn, packet('roster', { players }));
+    for (const { conn } of this.connections.values()) this._send(conn, packet('roster', { players, locked: this.locked, started: this.started }));
   }
 
   _reject(record, reason) {
@@ -500,20 +564,51 @@ export class PartyNetwork {
     this.onStatus(message);
   }
 
+  get lastHeartbeatAt() { return this._lastHeartbeatAt; }
+  get heartbeatLateness() { return this._heartbeatLateness; }
+  get heartbeatDiagnostics() {
+    return Object.freeze({ lastHeartbeatAt: this._lastHeartbeatAt, lateness: this._heartbeatLateness, graceCount: this._heartbeatGraceCount });
+  }
+
   _startHeartbeat(session) {
+    this._lastHeartbeatAt = this.now();
+    this._heartbeatLateness = 0;
+    this._heartbeatGraceCount = 0;
     const tick = () => {
       if (session !== this.session) return;
+      const at = this.now();
+      this._heartbeatLateness = Math.max(0, at - this._lastHeartbeatAt - this.heartbeatMs);
+      this._lastHeartbeatAt = at;
+      const resumed = this._heartbeatLateness > this.heartbeatMs * 2;
+      let nextDelay = this.heartbeatMs;
+      const stale = record => {
+        if (at - record.lastSeen <= this.staleMs) return false;
+        // A resumed browser must process queued traffic before deciding that a
+        // channel is dead. One probe window per silence episode cannot renew
+        // itself, even when the following callback is also late.
+        if (record.heartbeatGraceUntil !== undefined) {
+          if (at >= record.heartbeatGraceUntil) return true;
+          nextDelay = Math.min(nextDelay, record.heartbeatGraceUntil - at);
+          return false;
+        }
+        if (!resumed) return true;
+        const graceMs = Math.min(this.heartbeatMs, 2500);
+        record.heartbeatGraceUntil = at + graceMs;
+        this._heartbeatGraceCount++;
+        nextDelay = Math.min(nextDelay, graceMs);
+        return false;
+      };
       if (this.role === 'host') {
         for (const record of [...this.connections.values()]) {
-          if (this.now() - record.lastSeen > this.staleMs) this._removeGuest(record);
+          if (stale(record)) this._removeGuest(record);
           else this._send(record.conn, packet('ping'));
         }
       } else if (this.role === 'guest' && this.hostConnection) {
         this._syncMesh();
-        if (this.now() - this.hostConnection.lastSeen > this.staleMs) { this._hostLost('The host stopped responding. Return to the lobby and reconnect.'); return; }
+        if (stale(this.hostConnection)) { this._hostLost('The host stopped responding. Return to the lobby and reconnect.'); return; }
         this._send(this.hostConnection.conn, packet('ping'));
       }
-      this._later(tick, this.heartbeatMs);
+      this._later(tick, nextDelay);
     };
     this._later(tick, this.heartbeatMs);
   }
@@ -539,6 +634,7 @@ export class PartyNetwork {
     this.code = '';
     this.players = [];
     this.locked = false;
+    this.started = false;
     this.lastState = null;
     this.stateProjector = null;
     for (const record of this.meshConnections.values()) record.conn.close();

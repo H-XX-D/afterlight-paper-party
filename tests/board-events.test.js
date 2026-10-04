@@ -21,8 +21,8 @@ function arrive(state,{tile=9,eventId,moves=1,shortcut=false}={}){
 }
 function resolve(state,choice){assert.equal(actParty(state,'a','choose-event',{choice}),true);conserved(state);}
 
-test('seven whimsical encounters expose real choices on the existing three story platforms',()=>{
-  assert.equal(BOARD_EVENTS.length,7);assert.equal(new Set(BOARD_EVENTS.map(event=>event.id)).size,7);
+test('nine whimsical encounters expose real choices on the existing three story platforms',()=>{
+  assert.equal(BOARD_EVENTS.length,9);assert.equal(new Set(BOARD_EVENTS.map(event=>event.id)).size,9);
   assert.deepEqual(Object.keys(BOARD_STORY_TILES).map(Number),[9,20,35]);
   for(const [tile,metadata] of Object.entries(BOARD_STORY_TILES)){
     assert.equal(BOARD_SPACES[tile].type,'event');assert.ok(metadata.title);assert.ok(BOARD_SPACES[metadata.doorTarget]);
@@ -43,7 +43,7 @@ test('seven whimsical encounters expose real choices on the existing three story
 
 test('the seeded host encounter deck visits every event before repeating and restores exactly',()=>{
   const state=make(314),restored=JSON.parse(JSON.stringify(state)),order=[];
-  for(let n=0;n<14;n++){
+  for(let n=0;n<BOARD_EVENTS.length*2;n++){
     for(const target of [state,restored]){
       arrive(target);const event=target.pendingEvent;
       if(target===state)order.push(event.id);
@@ -51,7 +51,8 @@ test('the seeded host encounter deck visits every event before repeating and res
     }
     assert.deepEqual(state,restored);conserved(state);
   }
-  assert.equal(new Set(order.slice(0,7)).size,7);assert.equal(new Set(order.slice(7)).size,7);
+  assert.equal(new Set(order.slice(0,BOARD_EVENTS.length)).size,BOARD_EVENTS.length);
+  assert.equal(new Set(order.slice(BOARD_EVENTS.length)).size,BOARD_EVENTS.length);
   const other=make(315);arrive(other);
   assert.notDeepEqual([other.pendingEvent.id,...other.storyDeck],[order[0],...state.storyDeck],'another seed changes the host encounter order');
 });
@@ -141,7 +142,7 @@ test('landing bumps each occupied traveler once; shields absorb and displacement
   const state=make();state.players[1].position=1;state.players[2].position=1;state.players[2].shield=true;
   state.players[3].position=47;
   arrive(state,{tile:1});
-  assert.equal(state.players[0].sparks,5,'one3-point bump plus2 ordinary landing points');
+  assert.equal(state.players[0].sparks,0,'one3-point bump then the Thorn Toll takes its bounded three');
   assert.equal(state.players[1].position,47);assert.equal(state.players[2].position,1);assert.equal(state.players[2].shield,false);
   assert.equal(state.players[3].position,47,'the bumped traveler cannot bump a third traveler');
   assert.deepEqual(state.boardEncounter.moves,[{playerId:'b',from:1,to:47,blocked:false},{playerId:'c',from:1,to:1,blocked:true}]);
@@ -152,7 +153,7 @@ test('landing bumps each occupied traveler once; shields absorb and displacement
 });
 
 test('starting stack gives no free encounter; moved and teleported bumps cannot trigger tile rewards',()=>{
-  const state=make();arrive(state,{tile:1});assert.equal(state.boardEncounter,null);assert.equal(state.players[0].sparks,2);
+  const state=make();arrive(state,{tile:1});assert.equal(state.boardEncounter,null);assert.equal(state.players[0].sparks,0,'an empty purse pays no Thorn Toll');
   const door=make();arrive(door,{eventId:'folded-door'});door.players[1].position=7;resolve(door,'enter');
   stepParty(door,1);stepParty(door,.21);
   assert.equal(door.players[0].position,7);assert.equal(door.players[0].sparks,3,'door contact gives its bump, not the shrine reward');
@@ -164,7 +165,7 @@ test('starting stack gives no free encounter; moved and teleported bumps cannot 
 test('visible encounter and lap metadata stay detached in recipient views',()=>{
   const state=make();arrive(state,{tile:0});
   assert.equal(state.lapCelebration.amount,25);assert.equal(state.boardEncounter.type,'bump');
-  assert.equal(state.players[0].sparks,36,'lap25 plus three bumps9 plus landing2');
+  assert.equal(state.players[0].sparks,38,'lap25 plus three bumps9 plus Moon Mint4');
   const guest=viewParty(state,'b');assert.deepEqual(guest.boardEncounter,state.boardEncounter);assert.deepEqual(guest.lapCelebration,state.lapCelebration);
   guest.boardEncounter.moves[0].to=123;assert.notEqual(state.boardEncounter.moves[0].to,123);
   assert.ok(guest.players[0].hand.every(card=>card.back));conserved(state);

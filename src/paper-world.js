@@ -3,9 +3,13 @@ import {generateMaterialMaps} from './materials.js';
 import {sceneLighting} from './scene-lighting.js';
 import {paperPalette} from './paper-palette.js';
 import {paperReliefData,paperWingData,paperAlphaContours} from './paper-geometry.js';
+import {PAPER_ENVIRONMENT_KINDS,PAPER_ENVIRONMENT_CUTS,getPaperEnvironmentModels,paperEnvironmentResponse,foldPaperTriangles,paperSupportTabData,cleanPaperEnvironmentPixels} from './paper-environment.js';
+import {measurePaperCell} from './paper-animation.js';
+import {createPaperAtlasFrames} from './paper-atlas.js';
+import {PAPER_SOURCE_FILTER} from './paper-pigment.js';
 
 /**
- * One reusable 3D paper theater for the board and all twenty-four minigames.
+ * One reusable 3D paper theater for the board and all twenty-six minigames.
  * Gameplay remains in its authoritative 960×540 plane; this scene supplies real
  * perspective, folded edge faces, contact shadows and depth behind that plane.
  */
@@ -14,9 +18,10 @@ export function createPaperWorld(art={}){
   let width=960,height=540,lastCalls=0,lastTriangles=0,maxCalls=0,lastLightingKey='',lastShadowTime=-1;
   const features={ao:true,normals:true,metallic:true,lighting:true},shaderErrors=[];
   const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,Number.isFinite(n)?n:lo));
+  const ownedAtlases=new Map();
   const geometryPool=new Set(),materialPool=new Set(),texturePool=new Map(),atlasTextures=new Map(),cutoutGeometries=new Map(),realmGeometryCache=new Map();
-  let depthEnabled=true,currentRelief=null;
-  const unavailable={draw:()=>false,dispose(){},setDepth(){return false},setFeatures(next={}){for(const key of Object.keys(features))if(typeof next[key]==='boolean')features[key]=next[key];return {...features};},get stats(){return {available:false,frames:0,calls:0,triangles:0,geometries:0,textures:0,lastId:'',width:0,height:0,features:{...features},materials:{pbr:0,normalMapped:0,aoMapped:0,roughnessMapped:0,metalnessMapped:0,paperMetalness:0},materialMaps:{ready:false,size:0},dynamicLights:0,diorama:{depthEnabled:false,depthLayers:0,reliefVertices:0,contourMeshes:0,texturedMeshes:0,geometryDepth:0,cachedRealms:0},shaderErrors:[...shaderErrors]};}};
+  let depthEnabled=true,currentRelief=null,environmentReady=false,environmentMotionTime=0;
+  const unavailable={draw:()=>false,dispose(){},setDepth(){return false},setFeatures(next={}){for(const key of Object.keys(features))if(typeof next[key]==='boolean')features[key]=next[key];return {...features};},get stats(){return {available:false,frames:0,calls:0,triangles:0,geometries:0,textures:0,lastId:'',width:0,height:0,features:{...features},materials:{pbr:0,normalMapped:0,aoMapped:0,roughnessMapped:0,metalnessMapped:0,paperMetalness:0},materialMaps:{ready:false,size:0},dynamicLights:0,diorama:{depthEnabled:false,depthLayers:0,reliefVertices:0,contourMeshes:0,texturedMeshes:0,geometryDepth:0,cachedRealms:0,foldedEnvironmentMeshes:0,physicalCreases:0,supportTabs:0,environmentMotionTime:0},shaderErrors:[...shaderErrors]};}};
   if(typeof document==='undefined')return unavailable;
   try{
     canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;
@@ -139,12 +144,12 @@ export function createPaperWorld(art={}){
     islands.push({group,baseY:0,phase:n*1.7});
   }
 
-  const backdropMaterial=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false}));backdropMaterial.userData.grade=.14;backdropMaterial.normalScale.setScalar(.18);backdropMaterial.aoMapIntensity=.34;backdropMaterial.emissive.set('#ffffff');backdropMaterial.emissiveIntensity=.19;
+  const backdropMaterial=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false}));backdropMaterial.userData.grade=.14;backdropMaterial.normalScale.setScalar(.23);backdropMaterial.aoMapIntensity=.46;backdropMaterial.emissive.set('#ffffff');backdropMaterial.emissiveIntensity=.13;
   const backdrop=mesh(plane,backdropMaterial);backdrop.position.set(0,3,-20);backdrop.scale.set(72,40.5,1);
   backdrop.receiveShadow=true;
   // Four contoured, closed cardstock wings use the SAME printed image and UVs
   // as the distant relief, with real depth and exposed corrugated edge faces.
-  const wingPrint=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.025}));wingPrint.userData.grade=.14;wingPrint.normalScale.setScalar(.18);wingPrint.aoMapIntensity=.34;wingPrint.emissive.set('#ffffff');wingPrint.emissiveIntensity=.19;
+  const wingPrint=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',fog:false,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.025}));wingPrint.userData.grade=.14;wingPrint.normalScale.setScalar(.26);wingPrint.aoMapIntensity=.48;wingPrint.emissive.set('#ffffff');wingPrint.emissiveIntensity=.10;
   const wingEdge=bindSurface(ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',vertexColors:true,transparent:true,depthWrite:false,alphaTest:.025})),'corrugation');
   const wings=[];
   for(const near of[false,true])for(const side of[-1,1]){
@@ -160,7 +165,7 @@ export function createPaperWorld(art={}){
     const key=texture.image;
     if(realmGeometryCache.has(key)){const found=realmGeometryCache.get(key);realmGeometryCache.delete(key);realmGeometryCache.set(key,found);return found;}
     const scan=document.createElement('canvas');scan.width=192;scan.height=108;const c=scan.getContext('2d',{willReadFrequently:true});c.drawImage(texture.image,0,0,192,108);const image=c.getImageData(0,0,192,108);
-    const relief=paperReliefData(image),wingData=wings.map(p=>paperWingData(image,p.userData));
+    const relief=paperReliefData(image,{depth:3.8,fold:.95}),wingData=wings.map(p=>paperWingData(image,{...p.userData,thickness:p.userData.near?.34:.25}));
     const sceneDepth=[...relief.positions.filter((_,i)=>i%3===2)].map(z=>z-20);for(const data of wingData)for(let i=2;i<data.positions.length;i+=3)sceneDepth.push(data.positions[i]);
     const depthSpan=Math.max(...sceneDepth)-Math.min(...sceneDepth);
     const value={relief:fromData(relief),wings:wingData.map(fromData),reliefVertices:relief.positions.length/3,depthRange:relief.depthRange,depthSpan,sourceWidth:texture.image.width,sourceHeight:texture.image.height};realmGeometryCache.set(key,value);
@@ -172,10 +177,21 @@ export function createPaperWorld(art={}){
     for(let n=0;n<wings.length;n++){wings[n].visible=depthEnabled&&!!currentRelief;if(currentRelief)wings[n].geometry=currentRelief.wings[n];}
   }
 
+  // These closed, creased feet are illustrated paper supports, not stock boxes.
+  // Geometry and materials are created once and reused across all realm changes.
+  const supportGeo=fromData(paperSupportTabData()),environmentModels=[];
+  for(let n=0;n<4;n++){
+    const group=new THREE.Group();group.visible=false;scene.add(group);
+    const material=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',alphaTest:.05,alphaToCoverage:true,side:THREE.DoubleSide,flatShading:true}));
+    const value=mesh(plane,[material,edge],group);value.castShadow=true;value.receiveShadow=true;
+    const tab=mesh(supportGeo,[paper,edge],group);tab.castShadow=true;tab.receiveShadow=true;tab.rotation.x=-Math.PI/2;
+    environmentModels.push({group,value,tab,material,spec:null});
+  }
+
   const stands=[];
   const standMaterials=[];
   for(let n=0;n<6;n++){
-    const material=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',transparent:false,alphaTest:.22,side:THREE.DoubleSide}));
+    const material=ownMaterial(new THREE.MeshStandardMaterial({color:'#ffffff',transparent:false,alphaTest:.05,alphaToCoverage:true,side:THREE.DoubleSide}));
     const value=mesh(plane,material);value.castShadow=true;value.receiveShadow=true;value.visible=false;
     stands.push(value);standMaterials.push(material);
   }
@@ -202,11 +218,25 @@ export function createPaperWorld(art={}){
   function atlasTexture(name,col,row,cols,rows){
     const im=art[name];if(!im?.width)return null;
     const key=[name,col,row,cols,rows].join(':');if(atlasTextures.has(key))return atlasTextures.get(key);
-    const crop=document.createElement('canvas'),cellW=im.width/cols,cellH=im.height/rows;
-    crop.width=Math.min(640,Math.round(cellW));crop.height=Math.max(1,Math.round(crop.width*cellH/cellW));
-    const c=crop.getContext('2d');if(!c)return null;
-    c.drawImage(im,col*cellW,row*cellH,cellW,cellH,0,0,crop.width,crop.height);
-    const texture=new THREE.CanvasTexture(crop);texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;atlasTextures.set(key,texture);return texture;
+    const crop=document.createElement('canvas'),cellW=im.width/cols,cellH=im.height/rows;let frame=null;
+    if(['props','paper-objects'].includes(name)){
+      if(!ownedAtlases.has(name)){const source=document.createElement('canvas');source.width=im.width;source.height=im.height;const cx=source.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);const image=cx.getImageData(0,0,im.width,im.height);image.data.set(cleanPaperEnvironmentPixels(image.data));ownedAtlases.set(name,createPaperAtlasFrames(image,{columns:cols,rows,overflow:48}));}
+      frame=ownedAtlases.get(name).frame(col,row);if(!frame||frame.empty)return null;
+      crop.width=frame.width;crop.height=frame.height;const cx=crop.getContext('2d');cx.putImageData(new ImageData(frame.pixels,frame.width,frame.height),0,0);
+    }else{
+      crop.width=Math.min(640,Math.round(cellW));crop.height=Math.max(1,Math.round(crop.width*cellH/cellW));const cx=crop.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(im,col*cellW,row*cellH,cellW,cellH,0,0,crop.width,crop.height);
+    }
+    const texture=new THREE.CanvasTexture(crop);if(frame)texture.userData.paperAtlasDraw=frame.draw;texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;atlasTextures.set(key,texture);return texture;
+  }
+  function environmentTexture(index){
+    const im=art['folded-environment'],key='folded-environment:isolated:'+index;if(!im?.width)return null;if(atlasTextures.has(key))return atlasTextures.get(key);
+    const cut=PAPER_ENVIRONMENT_CUTS[index],source=document.createElement('canvas');source.width=cut[2];source.height=cut[3];const cx=source.getContext('2d',{willReadFrequently:true});cx.drawImage(im,...cut,0,0,source.width,source.height);
+    const image=cx.getImageData(0,0,source.width,source.height);image.data.set(cleanPaperEnvironmentPixels(image.data));
+    const bounds=measurePaperCell(image,{x:0,y:0,width:source.width,height:source.height},{includeMask:true});if(bounds.empty)return null;
+    const isolated=document.createElement('canvas');isolated.width=bounds.width;isolated.height=bounds.height;const ic=isolated.getContext('2d'),pixels=ic.createImageData(bounds.width,bounds.height);
+    for(let y=0;y<bounds.height;y++)for(let x=0;x<bounds.width;x++){const sx=bounds.x+x,sy=bounds.y+y;if(!bounds.mask[sy*source.width+sx])continue;const dest=(y*bounds.width+x)*4,at=(sy*source.width+sx)*4;for(let channel=0;channel<4;channel++)pixels.data[dest+channel]=image.data[at+channel];}ic.putImageData(pixels,0,0);
+    const printed=document.createElement('canvas');printed.width=isolated.width;printed.height=isolated.height;const pc=printed.getContext('2d');pc.filter=PAPER_SOURCE_FILTER;pc.drawImage(isolated,0,0);
+    const texture=new THREE.CanvasTexture(printed);texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;atlasTextures.set(key,texture);return texture;
   }
   function paperSurfaces(){
     if(printedPaper)return;
@@ -239,14 +269,17 @@ export function createPaperWorld(art={}){
   }
   function cutoutGeometry(texture){
     if(cutoutGeometries.has(texture))return cutoutGeometries.get(texture);
-    const scan=document.createElement('canvas');scan.width=64;scan.height=64;const c=scan.getContext('2d');c.drawImage(texture.image,0,0,64,64);
-    const contours=paperAlphaContours(c.getImageData(0,0,64,64));
+    const scan=document.createElement('canvas');scan.width=128;scan.height=128;const c=scan.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(texture.image,0,0,128,128);
+    const contours=paperAlphaContours(c.getImageData(0,0,128,128));
     if(contours.outer.length<3)return plane;
     const vector=points=>points.map(p=>new THREE.Vector2(...p)),shape=new THREE.Shape(vector(contours.outer));
     for(const hole of contours.holes)shape.holes.push(new THREE.Path(vector(hole)));
-    const geometry=new THREE.ExtrudeGeometry(shape,{depth:.11,bevelEnabled:false,curveSegments:1,steps:1});
-    const position=geometry.attributes.position,uv=geometry.attributes.uv;for(let n=0;n<uv.count;n++)uv.setXY(n,position.getX(n)+.5,position.getY(n)+.5);
-    geometry.userData={alphaOutline:true,holes:contours.holes.length,pixelArea:contours.pixelArea};ownGeometry(geometry);cutoutGeometries.set(texture,geometry);return geometry;
+    const solid=new THREE.ExtrudeGeometry(shape,{depth:.11,bevelEnabled:false,curveSegments:1,steps:1});
+    const position=solid.attributes.position,uv=solid.attributes.uv;for(let n=0;n<uv.count;n++)uv.setXY(n,position.getX(n)+.5,position.getY(n)+.5);
+    const folded=foldPaperTriangles({positions:position.array,uv:uv.array,groups:solid.groups},{crease:.21});solid.dispose();
+    const geometry=fromData(folded),draw=texture.userData.paperAtlasDraw;
+    if(draw){geometry.scale(draw.width,draw.height,1);geometry.translate(draw.x+draw.width*.5-.5,.5-draw.y-draw.height*.5,0);}
+    geometry.userData={alphaOutline:true,holes:contours.holes.length,pixelArea:contours.pixelArea,creaseFacets:folded.creaseFacets};cutoutGeometries.set(texture,geometry);return geometry;
   }
   function applyStandees(seed){
     paperSurfaces();
@@ -255,7 +288,7 @@ export function createPaperWorld(art={}){
       const geometry=cutoutGeometry(portal);
       for(const arch of arches){
         if(arch.frame.geometry!==geometry){
-          const printed=bindSurface(ownMaterial(new THREE.MeshStandardMaterial({map:portal,color:'#dedbd3',alphaTest:.2,side:THREE.DoubleSide})),'paper',printedMetalMask(portal));
+          const printed=bindSurface(ownMaterial(new THREE.MeshStandardMaterial({map:portal,color:'#dedbd3',alphaTest:.05,alphaToCoverage:true,side:THREE.DoubleSide})),'paper',printedMetalMask(portal));
           arch.frame.geometry=geometry;arch.frame.material=[printed,edge];arch.frame.scale.set(4.1,9.8,5);
         }
         for(const child of arch.group.children)if(child!==arch.frame)child.visible=false;
@@ -285,6 +318,21 @@ export function createPaperWorld(art={}){
     for(;count<stands.length;count++)stands[count].visible=false;
     atlasReady=!!art['paper-platforms']||!!art.props||!!art['paper-objects'];
   }
+  function applyEnvironment(id){
+    if(!art['folded-environment']?.width){environmentReady=false;for(const model of environmentModels)model.group.visible=false;return;}
+    paperSurfaces();const specs=getPaperEnvironmentModels(id);
+    for(let n=0;n<environmentModels.length;n++){
+      const model=environmentModels[n],spec=specs[n],index=PAPER_ENVIRONMENT_KINDS.indexOf(spec.kind),texture=environmentTexture(index);if(!texture)continue;
+      model.material.map=texture;model.material.color.set(paperPalette(id).paper);model.material.needsUpdate=true;
+      model.value.geometry=cutoutGeometry(texture);model.value.scale.set(spec.width,spec.height,spec.width*2.1);model.value.position.set(0,spec.height*.5,0);
+      model.tab.scale.set(spec.width*.52,spec.width*.45,1.5);model.tab.position.set(0,-.10,.20);
+      model.group.position.set(spec.x,spec.y,spec.z);model.group.rotation.set(0,-spec.side*.26,spec.side*.025);model.group.visible=true;model.spec=spec;
+    }
+    // The near folded buildings replace the old duplicated portal fronts; the
+    // far arches retain their printed silhouettes and keep the distant horizon.
+    for(let n=0;n<arches.length;n++)arches[n].group.visible=n>=2;
+    environmentReady=true;
+  }
   function configure(id){
     const seed=hash(id),theme=nature.has(id)?'grove':workshop.has(id)?'workshop':celestial.has(id)?'astral':'cathedral';
     currentConfig={seed,theme,phase:fraction(seed,0)*Math.PI*2};
@@ -305,7 +353,7 @@ export function createPaperWorld(art={}){
       island.baseY=island.group.position.y;island.phase=fraction(seed,n+39)*Math.PI*2;
     }
     stage.position.y=board?-10.6:-10.2;
-    applyStandees(seed);renderer.shadowMap.needsUpdate=true;lastId=id;lastTime=-1;return true;
+    applyStandees(seed);applyEnvironment(id);renderer.shadowMap.needsUpdate=true;lastId=id;lastTime=-1;return true;
   }
 
   function updateLighting(profile,time,force){
@@ -339,18 +387,30 @@ export function createPaperWorld(art={}){
     if(disposed||lost||!ctx?.drawImage||!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)return false;
     if(!Number.isFinite(time))time=0;id=String(id||'world');
     try{
-      const targetWidth=Math.max(1,Math.min(960,Math.round(w))),targetHeight=Math.max(1,Math.min(540,Math.round(h)));
+      const transform=ctx.getTransform?.(),scale=Math.min(2,Math.max(1,Math.hypot(transform?.a??1,transform?.b??0)));
+      const targetWidth=Math.max(1,Math.min(1920,Math.round(w*scale))),targetHeight=Math.max(1,Math.min(1080,Math.round(h*scale)));
       let resized=false;if(targetWidth!==width||targetHeight!==height){width=targetWidth;height=targetHeight;renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();resized=true;}
       if(id!==lastId&&!configure(id))return false;
       if(!atlasReady&&(art['paper-platforms']||art.props||art['paper-objects']))applyStandees(currentConfig.seed);
+      if(!environmentReady&&art['folded-environment']?.width)applyEnvironment(id);
       const profile=lightingProfile||sceneLighting({id,time}),lightingKey=JSON.stringify([profile.ambient,profile.key,profile.fill,profile.points]);
       if(time!==lastTime||resized||lightingKey!==lastLightingKey){
         updateLighting(profile,time,lastTime<0||resized);
         const phase=currentConfig.phase;
-        camera.position.set(Math.sin(time*.14+phase)*.82,4.45+Math.sin(time*.11+phase)*.23,26.1+Math.cos(time*.10+phase)*.13);
+        camera.position.set(Math.sin(time*.14+phase)*1.04,4.45+Math.sin(time*.11+phase)*.27,26.1+Math.cos(time*.10+phase)*.17);
         camera.lookAt(Math.sin(time*.095+phase)*.15,1.72,-2.0);
         for(const island of islands){island.group.position.y=island.baseY+Math.sin(time*.63+island.phase)*.16;island.group.rotation.x=Math.sin(time*.34+island.phase)*.035;}
         for(const arch of arches)arch.fold.rotation.z=Math.sin(time*.68+arch.phase)*.025;
+        const response=paperEnvironmentResponse(time,{},profile);
+        for(const model of environmentModels){
+          const spec=model.spec;if(!spec||!model.group.visible)continue;
+          const sway=Math.sin(time*.57+spec.phase),hinge=Math.sin(time*.91+spec.phase);
+          model.group.position.y=spec.y+sway*.055;
+          model.group.rotation.y=-spec.side*.26+hinge*.035;
+          model.group.rotation.z=spec.side*.025+sway*(spec.kind==='hangingbridge'?.045:.016);
+          model.value.scale.y=spec.height*(1+response.energy*.015);
+        }
+        environmentMotionTime=time;
         for(let n=0;n<16;n++){
           const seed=currentConfig.seed,side=n%2?-1:1;
           scratch.position.set(side*(11+fraction(seed,n+60)*5),((fraction(seed,n+85)*18-time*(.10+fraction(seed,n+99)*.11)+18)%18)-5,-8+fraction(seed,n+115)*13);
@@ -365,8 +425,8 @@ export function createPaperWorld(art={}){
   function dispose(){
     if(disposed)return;disposed=true;
     for(const texture of texturePool.values())texture.dispose();for(const texture of atlasTextures.values())texture.dispose();
-    for(const geometry of geometryPool)geometry.dispose();for(const material of materialPool)material.dispose();
-    texturePool.clear();atlasTextures.clear();realmGeometryCache.clear();currentRelief=null;environmentTarget.dispose();scene.environment=null;scene.clear();renderer.dispose();renderer.forceContextLoss();canvas.width=1;canvas.height=1;
+    ownedAtlases.clear();for(const geometry of geometryPool)geometry.dispose();for(const material of materialPool)material.dispose();
+    texturePool.clear();atlasTextures.clear();realmGeometryCache.clear();cutoutGeometries.clear();currentRelief=null;environmentReady=false;environmentTarget.dispose();scene.environment=null;scene.clear();renderer.dispose();renderer.forceContextLoss();canvas.width=1;canvas.height=1;
   }
-  return {draw,dispose,setFeatures,setDepth,get stats(){const active=[...materialPool].filter(m=>m.isMeshStandardMaterial);let texturedMeshes=0,untexturedMeshes=0;scene.traverseVisible(node=>{if(node.isMesh){const materials=Array.isArray(node.material)?node.material:[node.material];if(materials.every(m=>!!m.map))texturedMeshes++;else untexturedMeshes++;}});return {available:!disposed&&!lost,frames,calls:lastCalls,maxCalls,triangles:lastTriangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,cachedRealmTextures:texturePool.size,lastId,width,height,features:{...features},materials:{pbr:active.length,normalMapped:active.filter(m=>m.normalMap).length,aoMapped:active.filter(m=>m.aoMap).length,roughnessMapped:active.filter(m=>m.roughnessMap).length,metalnessMapped:active.filter(m=>m.metalnessMap&&m.metalness>0).length,paperMetalness:paper.metalness},materialMaps:{ready:!disposed,size:measuredMaps.size,kinds:['paper','corrugation','foil'],colorSpace:'linear'},dynamicLights:features.lighting?2+points.filter(p=>p.visible&&p.intensity>0).length:0,diorama:{depthEnabled,depthLayers:depthEnabled?5:1,reliefVertices:depthEnabled?currentRelief?.reliefVertices||0:0,contourMeshes:depthEnabled?wings.filter(p=>p.visible).length:0,texturedMeshes,untexturedMeshes,geometryDepth:depthEnabled?currentRelief?.depthSpan||0:0,cachedRealms:realmGeometryCache.size,alphaExtrusions:cutoutGeometries.size,cutoutHoles:[...cutoutGeometries.values()].reduce((sum,g)=>sum+(g.userData.holes||0),0),portalHoles:cutoutGeometries.get(atlasTextures.get('paper-objects:1:1:3:3'))?.userData.holes||0,sourceWidth:currentRelief?.sourceWidth||0,sourceHeight:currentRelief?.sourceHeight||0,palette:paperPalette(lastId).id},shaderErrors:[...shaderErrors]};}};
+  return {draw,dispose,setFeatures,setDepth,get stats(){const active=[...materialPool].filter(m=>m.isMeshStandardMaterial);let texturedMeshes=0,untexturedMeshes=0;scene.traverseVisible(node=>{if(node.isMesh){const materials=Array.isArray(node.material)?node.material:[node.material];if(materials.every(m=>!!m.map))texturedMeshes++;else untexturedMeshes++;}});return {available:!disposed&&!lost,frames,calls:lastCalls,maxCalls,triangles:lastTriangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,cachedRealmTextures:texturePool.size,lastId,width,height,features:{...features},materials:{pbr:active.length,normalMapped:active.filter(m=>m.normalMap).length,aoMapped:active.filter(m=>m.aoMap).length,roughnessMapped:active.filter(m=>m.roughnessMap).length,metalnessMapped:active.filter(m=>m.metalnessMap&&m.metalness>0).length,paperMetalness:paper.metalness},materialMaps:{ready:!disposed,size:measuredMaps.size,kinds:['paper','corrugation','foil'],colorSpace:'linear'},dynamicLights:features.lighting?2+points.filter(p=>p.visible&&p.intensity>0).length:0,diorama:{depthEnabled,depthLayers:depthEnabled?5:1,reliefVertices:depthEnabled?currentRelief?.reliefVertices||0:0,contourMeshes:depthEnabled?wings.filter(p=>p.visible).length:0,texturedMeshes,untexturedMeshes,geometryDepth:depthEnabled?currentRelief?.depthSpan||0:0,cachedRealms:realmGeometryCache.size,alphaExtrusions:cutoutGeometries.size,cutoutHoles:[...cutoutGeometries.values()].reduce((sum,g)=>sum+(g.userData.holes||0),0),portalHoles:cutoutGeometries.get(atlasTextures.get('paper-objects:1:1:3:3'))?.userData.holes||0,sourceWidth:currentRelief?.sourceWidth||0,sourceHeight:currentRelief?.sourceHeight||0,palette:paperPalette(lastId).id,foldedEnvironmentMeshes:environmentModels.filter(model=>model.group.visible).length,physicalCreases:[...cutoutGeometries.values()].reduce((sum,geometry)=>sum+(geometry.userData.creaseFacets||0),0),supportTabs:environmentModels.filter(model=>model.group.visible).length,environmentMotionTime,environmentAtlasReady:environmentReady},shaderErrors:[...shaderErrors]};}};
 }

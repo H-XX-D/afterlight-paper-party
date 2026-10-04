@@ -17,12 +17,19 @@ function bounded(camera){
  assert.ok(camera.tx+960*camera.zoom>=960-1e-7&&camera.ty+540*camera.zoom>=540-1e-7,'right and bottom backdrop edges cover viewport');
 }
 
-test('card playback eases continuously from overview into the moving traveler',()=>{
+test('desktop card playback holds overview and movement eases into the traveler over three tenths',()=>{
  const state=make('playing-card',8,BOARD_TIMINGS.play),start=boardCamera(state,geometry);near(start.zoom,1);near(start.tx,0);near(start.ty,0);
- let previous=1;
- for(let n=0;n<=24;n++){state.timer=BOARD_TIMINGS.play*(1-n/24);const camera=boardCamera(state,geometry);bounded(camera);assert.ok(camera.zoom>=previous);previous=camera.zoom;}
- const before=boardCamera(state,geometry);Object.assign(state,{boardStage:'moving',moveTarget:9,timer:BOARD_TIMINGS.move});
+ for(let n=0;n<=24;n++){state.timer=BOARD_TIMINGS.play*(1-n/24);const camera=boardCamera(state,geometry);bounded(camera);near(camera.zoom,1);near(camera.tx,0);near(camera.ty,0);}
+ const before=boardCamera(state,geometry);Object.assign(state,{boardStage:'moving',moveTarget:9,timer:BOARD_TIMINGS.move,cardTravelStartedAt:state.clock});
  const after=boardCamera(state,geometry);near(before.zoom,after.zoom);near(before.tx,after.tx);near(before.ty,after.ty);
+ let previous=1;
+ for(let n=0;n<=30;n++){
+  state.clock=state.cardTravelStartedAt+.3*n/30;
+  const snapshot=JSON.stringify(state),camera=boardCamera(state,geometry);bounded(camera);assert.ok(camera.zoom>=previous-1e-8);previous=camera.zoom;assert.equal(JSON.stringify(state),snapshot);
+  if(n===15){near(camera.weight,.5);near(camera.zoom,1.35);}
+ }
+ near(boardCamera(state,geometry).zoom,1.7);near(boardCamera(state,geometry).weight,1);
+ state.clock=state.cardTravelStartedAt-.1;near(boardCamera(state,geometry).zoom,1,'negative network-clock offset clamps safely to overview');
 });
 
 test('every main step keeps the moving actor visible and prevents blank camera edges',()=>{

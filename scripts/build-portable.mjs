@@ -10,12 +10,15 @@ if(!Array.isArray(assetManifest.images)||assetManifest.images.length===0)throw n
 if(new Set(assetManifest.images.map(image=>image.name)).size!==assetManifest.images.length)throw new Error('Duplicate asset name');
 const fontDir=path.join(root,'public','fonts');
 await mkdir(fontDir,{recursive:true});
-let css=await readFile(path.join(root,'src/style.css'),'utf8');
+// Keep the portable stylesheet in the same order as the browser entry point.
+const cssImports=[...((await readFile(path.join(root,'src/main.js'),'utf8')).matchAll(/^import\s+['"](.+\.css)['"];?$/gm))].map(match=>match[1]);
+if(!cssImports.length)throw new Error('No entry stylesheets found');
+let css=(await Promise.all(cssImports.map(file=>readFile(path.resolve(root,'src',file),'utf8')))).join('\n');
 const fontImport=css.match(/@import\s+url\(['"]([^'"]+)['"]\);/);
 let fontCSS='';
 if(fontImport){
- const cache=path.join(fontDir,'portable-fonts.css');
- try{fontCSS=await readFile(cache,'utf8')}catch{
+ const cache=path.join(fontDir,'portable-fonts.css'),cacheSource=path.join(fontDir,'portable-fonts.source.json');
+ try{const source=JSON.parse(await readFile(cacheSource,'utf8'));if(source.url!==fontImport[1])throw new Error('Font import changed');fontCSS=await readFile(cache,'utf8')}catch{
   const response=await fetch(fontImport[1],{headers:{'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'}});
   if(!response.ok)throw new Error('Font stylesheet download failed: '+response.status);
   const remoteCSS=await response.text();
@@ -30,6 +33,7 @@ if(fontImport){
    await writeFile(path.join(fontDir,name),bytes);fontCSS=fontCSS.replaceAll(url,name);
   }
   await writeFile(cache,fontCSS);
+  await writeFile(cacheSource,JSON.stringify({url:fontImport[1]},null,2)+'\n');
  }
  const urls=[...new Set([...fontCSS.matchAll(/url\(([^)]+)\)/g)].map(m=>m[1]))];
  for(const name of urls){if(name.startsWith('https:'))throw new Error('Remote font remained in cache');const bytes=await readFile(path.join(fontDir,name));fontCSS=fontCSS.replaceAll(name,'data:font/woff2;base64,'+bytes.toString('base64'))}

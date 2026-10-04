@@ -9,9 +9,9 @@ function finiteTree(value,path='state'){
   if(value&&typeof value==='object')for(const [k,v] of Object.entries(value))finiteTree(v,`${path}.${k}`);
 }
 
-test('catalog has twenty-four distinct games, complete rules, and bounded rounds',()=>{
-  assert.equal(MINIGAMES.length,24);assert.equal(new Set(MINIGAMES.map(g=>g.id)).size,24);
-  for(const d of MINIGAMES){assert.ok(d.name&&d.description&&d.instructions&&d.icon);assert.ok(d.duration>=18&&d.duration<=48);}
+test('catalog has twenty-six distinct games, complete rules, and bounded rounds',()=>{
+  assert.equal(MINIGAMES.length,26);assert.equal(new Set(MINIGAMES.map(g=>g.id)).size,26);
+  for(const d of MINIGAMES){assert.ok(d.name&&d.description&&d.instructions&&d.icon);assert.ok(d.duration>=18&&d.duration<=52);}
 });
 
 test('invalid games and unsupported party sizes fail explicitly',()=>{
@@ -166,4 +166,41 @@ test('ten replacement slots expose new mechanics and retired games cannot be sta
  const replacements={memory:'bell-breakers',tug:'relic-launch',fishing:'hollow-horde',balance:'rift-ball',sorting:'spark-heist',reaction:'fuse-festival',potato:'gullet-gala',crates:'tower-relay',orbit:'bellows-boxing',cipher:'colossus-wake'};
  const ids=new Set(MINIGAMES.map(game=>game.id));
  for(const [retired,replacement]of Object.entries(replacements)){assert.equal(ids.has(retired),false,retired+' retired');assert.ok(ids.has(replacement),replacement+' registered');assert.throws(()=>createGame(retired,players(1)),/Unknown/);const g=createGame(replacement,players(4),21);assert.equal(g.id,replacement);if(replacement!=='gullet-gala')assert.equal(g.state.objective.kind,replacement);}
+});
+
+test('late library play rewards distinct shelf phases and moving rune hunts without repeated farming',()=>{
+ const g=createGame('maze',players(1),41),p=g.players[0];g.time=9;g.surprises.nextAt=99;p.cx=3;p.cy=2;p.facing=1;
+ stepGame(g,{p0:{right:true}},1/60);assert.equal(p.cx,3);assert.equal(p.score,0,'walking into a shelf does not earn a phase reward');
+ p.prev.action=false;stepGame(g,{p0:{right:true,action:true}},1/60);assert.equal(p.cx,5);assert.equal(p.phaseChain,1);assert.equal(p.score,5);assert.ok(p.ability<2.3);
+ p.ability=0;p.walk=0;p.prev={};stepGame(g,{p0:{left:true,action:true}},1/60);assert.equal(p.cx,3);assert.equal(p.phaseChain,2);assert.equal(p.score,12);
+ p.ability=0;p.walk=0;p.prev={};stepGame(g,{p0:{right:true,action:true}},1/60);assert.equal(p.score,12,'repeating the same landing cannot farm a chain');
+ p.cx=p.huntTile.x;p.cy=p.huntTile.y;p.walk=1;p.ability=2;const before=p.score;stepGame(g,{},1/60);assert.equal(p.score,before+14);assert.equal(p.ability,0);assert.ok(p.huntFound);
+ stepGame(g,{},1/60);assert.equal(p.score,before+14,'the hunt rune pays only once per room');
+ const hunt={...p.huntTile};p.cx=p.exitTile.x;p.cy=p.exitTile.y;p.hasKey=true;p.walk=1;stepGame(g,{},1/60);assert.notDeepEqual(p.huntTile,hunt);assert.equal(p.huntFound,false);assert.deepEqual(p.phaseSeen,[]);
+});
+
+test('late rhythm phrases alternate real instruments and a full clean phrase earns an encore',()=>{
+ const time=beat=>{let t=.8;for(let j=0;j<beat;j++)t+=Math.max(.38,.65-Math.floor(j/8)*.055);return t;};
+ const clean=createGame('rhythm',players(1),42),missed=createGame('rhythm',players(1),42),pattern=[0,1,0,1,1,0,1,0];
+ for(const g of [clean,missed])g.surprises.nextAt=99;
+ for(let j=0;j<8;j++)for(const g of [clean,missed]){
+  const p=g.players[0],lane=g===missed&&j===3?1-pattern[j]:pattern[j];g.time=time(24+j)-1/60;p.prev={};stepGame(g,{p0:{[lane?'right':'left']:true,action:true}},1/60);
+ }
+ assert.equal(clean.players[0].encores,1);assert.equal(clean.players[0].phraseHits,8);assert.equal(missed.players[0].encores,0);assert.ok(clean.players[0].score>missed.players[0].score+18);
+ assert.ok(clean.players[0].message.includes('ENCORE'));
+});
+
+test('late Watchman play makes covered red windows active and chains clean deliveries',()=>{
+ const g=createGame('redlight',players(1),43),p=g.players[0];g.time=9;g.surprises.nextAt=99;g.state.green=false;g.state.timer=1;p.lane=0;p.progress=10;
+ advance(g,12,{p0:{up:true,down:true}});assert.ok(p.progress>16);assert.equal(p.cleanChain,1);const score=p.score;
+ advance(g,12,{p0:{up:true,down:true}});assert.ok(p.score-score<1,'one patrol window pays only one cover slip');
+ g.state.green=true;p.prev={};p.ability=0;const before=p.progress;stepGame(g,{p0:{action:true}},1/60);assert.ok(p.progress>=before+18);assert.ok(p.ability<1.9);
+ p.progress=99.9;p.cleanChain=3;g.state.green=true;stepGame(g,{p0:{up:true}},.05);assert.equal(p.deliveries,1);assert.ok(p.message.includes('+34'));
+ g.state.green=false;g.state.timer=1;p.lane=1;stepGame(g,{p0:{up:true}},.05);assert.equal(p.cleanChain,0,'an exposed red run loses the clean-delivery chain');
+});
+
+test('late lantern gathering offers a controllable flutter and rewards risking rare cargo',()=>{
+ const g=createGame('mothlight',players(1),44),p=g.players[0];g.time=9;g.surprises.nextAt=99;g.state.objects=[];p.x=150;p.y=200;
+ const before=p.x;stepGame(g,{p0:{right:true,action:true}},.05);assert.ok(p.boost>0);assert.ok(p.x-before>15);assert.ok(p.ability>2);
+ p.x=480;p.y=403;p.carry=6;p.rareCargo=2;p.lastCatch=g.time;p.prev={};g.state.wisp={x:0,y:0};stepGame(g,{p0:{action:true}},1/60);assert.equal(p.score,44);assert.equal(p.carry,0);assert.equal(p.rareCargo,0);
 });

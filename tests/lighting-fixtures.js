@@ -19,6 +19,13 @@ for(const id of FIGHTER_IDS)LIGHTING_EVENT_FIXTURES[id]=g=>{
  const o=g.state.objective;if(o?.targets?.[0])o.targets[0].hp=1;if(o?.dummies?.[0])o.dummies[0].damage=50;if(o?.ball){o.ball.lastTouch=p.id;o.ball.vx=500;}if(o?.bomb)o.bomb.fuse=.6;if(o?.boss)o.boss.open=true;
 };
 LIGHTING_EVENT_FIXTURES['gullet-gala']=g=>{Object.assign(g.players[0],{charging:true,charge:.8,bite:.4,bitePower:.8,extension:160,flash:.82,message:'LONG GULP',burpTime:.2});};
+LIGHTING_EVENT_FIXTURES['clockwork-surgery']=g=>{
+ Object.assign(g.state,{pressure:.88,resonance:.54,bell:.48,warning:.8});const p=g.players[0],organ=p.pieces[0];Object.assign(p,{carried:null,alarm:.5,cooldown:.45,cursor:{x:organ.x,y:organ.y},flash:.82,message:'ALARM · TOOL DROPPED'});
+ const lifting=g.players[1],held=lifting.pieces[0];Object.assign(lifting,{carried:held.id,grabbed:.3,cursor:{x:held.x+4,y:held.y}});g.players[2].steady=.7;Object.assign(g.players[3],{success:.55,extractions:1});g.players[3].pieces[0].removed=true;
+};
+LIGHTING_EVENT_FIXTURES['tottering-tower']=g=>{
+ Object.assign(g.state,{lean:.58,instability:.86,stress:1.35,wind:-.78,warning:.7});const p=g.players[0],block=g.state.blocks.find(b=>b.layer===p.selectedLayer&&b.slot===p.selectedSlot);Object.assign(p,{phase:'pulling',carried:block.id,cooldown:0,bracing:true,brace:.76,flash:.82,message:'PULL · KEEP IT BALANCED'});block.owner=p.id;block.pull=.72;Object.assign(g.players[1],{phase:'choosing',success:.4,cooldown:.2});
+};
 
 export function makeLightingPair(id,createGame){
  if(typeof createGame!=='function')throw new TypeError('makeLightingPair requires the production createGame function');

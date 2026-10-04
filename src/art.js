@@ -1,8 +1,12 @@
-import {createPaperAnimator,measurePaperCell,referenceBodyHeight,paperFrameGeometry,MOTION_COLUMNS} from './paper-animation.js';
+import {createPaperAnimator,PAPER_CROSSFADE_SECONDS,PAPER_IMPACT_BLEND_SECONDS,measurePaperCell,normalizePaperFrame,paperFrameGeometry,paperMotionCut,MOTION_COLUMNS} from './paper-animation.js';
+import {paperEffectFrame} from './paper-effects.js';
+import {drawPaperEnvironment,drawPaperForeground,PAPER_ENVIRONMENT_KINDS,PAPER_ENVIRONMENT_CUTS,cleanPaperEnvironmentPixels} from './paper-environment.js';
 import {createPaperWorld} from './paper-world.js';
 import {createSpriteMaterials} from './sprite-materials.js';
 import {sceneLighting} from './scene-lighting.js';
-import {PAPER_SOURCE_FILTER,tintPaperPixels,paperCutEdgePixels,createPaperEffectCache} from './paper-pigment.js';
+import {gameFont} from './game-hud.js';
+import {createPaperAtlasFrames,paperAtlasDrawRect} from './paper-atlas.js';
+import {PAPER_SOURCE_FILTER,tintPaperPixels,paperCutEdgePixels,foldPaperCharacterPixels,createPaperEffectCache,CHARACTER_CLOTH_STYLES,measureCharacterTone,harmonizePaperCharacterPixels} from './paper-pigment.js';
 import {bakePaperPlatforms,paperPlatformStats,PAPER_PLATFORM_CELLS} from './paper-board.js';
 import assetManifest from '../assets-manifest.json';
 
@@ -16,7 +20,7 @@ export const CHARACTERS = [
   {id:5,name:'Briar',role:'The thorn doll',quote:'Catch a distant rival in a reaching thorn grasp.',className:'briar'},
   {id:6,name:'Vellum',role:'The ink jester',quote:'Blink through danger and slash the path you leave behind.',className:'vellum'},
   {id:7,name:'Nix',role:'The winter owl',quote:'Spread a fan of frost and slow your rivals.',className:'nix'}
-];
+].map(character=>Object.freeze({...character,outfitColor:CHARACTER_CLOTH_STYLES[character.id].color,outfitLabel:CHARACTER_CLOTH_STYLES[character.id].label}));
 export const PROP_NAMES=['spark','lantern','gear','crate','drone','umbrella','key','spike','platform','switch','orb','flag'];
 export const art={};
 export async function loadArt(){
@@ -24,6 +28,7 @@ export async function loadArt(){
   const im=new Image();im.onload=()=>{art[name]=im;resolve()};im.onerror=()=>reject(new Error(`Could not load ${name} artwork.`));im.src=window.AFTERLIGHT_ASSETS?.[name]??`${import.meta.env.BASE_URL}assets/${file}`;
  })));
  prepareActorFrames();
+ prepareCraftFrames();
  preparePlatformFrames();
  if(!paperWorld)paperWorld=createPaperWorld(art);
  if(!spriteMaterials)spriteMaterials=createSpriteMaterials();
@@ -40,16 +45,16 @@ const NEW_CUTS=[
 ];
 const ATTACK_CUTS=[[[20,8,492,334],[512,50,511,295]],[[15,347,497,383],[522,329,500,430]],[[18,761,492,374],[522,771,493,363]],[[18,1145,508,360],[529,1149,493,357]]];
 const OBJECTIVE_CUTS={target:[0,0,420,444],dummy:[483,0,350,444],foe:[881,0,385,444],ball:[1320,21,453,411],bank:[0,443,432,443],bomb:[455,443,413,443],checkpoint:[884,443,263,443],boss:[1179,427,595,460]};
-const paperSprites=new Map(),portraits=new Map(),actorFrames=new Map(),actorAnimator=createPaperAnimator();
-const platformFrames=new Map();
+const paperSprites=new Map(),portraits=new Map(),propPortraits=new Map(),actorFrames=new Map(),actorAnimator=createPaperAnimator();
+const platformFrames=new Map(),craftFrames=new Map(),atlasFrames=new Map(),cleanSources=new Map(),craftPleats=new WeakMap(),cachedFrames=new WeakMap();
 const effectSprites=createPaperEffectCache((source,color)=>{
  const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;const cx=canvas.getContext('2d',{willReadFrequently:true});cx.drawImage(source,0,0);const image=cx.getImageData(0,0,canvas.width,canvas.height);image.data.set(tintPaperPixels(image.data,color));cx.putImageData(image,0,0);return canvas;
 });
 const canvasScopes=new WeakMap();let nextCanvasScope=0,activeTime=0,paperReducedMotion=false;
-let paperWorld=null,spriteMaterials=null,activeScene='world',activeLighting=null,fixtureClock=null;
+let paperWorld=null,spriteMaterials=null,activeScene='world',activeLighting=null,activeContext=null,environmentView=null,foregroundView=null,sceneEnded=false,fixtureClock=null;
 const clock=()=>fixtureClock??performance.now()/1000;
-export function beginScene(ctx,id,time,profile){activeScene=id;activeTime=Number.isFinite(time)?time:0;activeLighting=profile||sceneLighting({id,time});spriteMaterials?.begin(activeLighting)}
-export function endScene(ctx){spriteMaterials?.end(ctx)}
+export function beginScene(ctx,id,time,profile,context){activeScene=id;activeTime=Number.isFinite(time)?time:0;activeLighting=profile||sceneLighting({id,time});activeContext=context||null;sceneEnded=false;foregroundView=null;spriteMaterials?.begin(activeLighting,ctx)}
+export function endScene(ctx){if(!sceneEnded){sceneEnded=true;foregroundView=drawPaperForeground(ctx,activeScene,activeTime,helpers,{context:activeContext||{},lighting:activeLighting,reducedMotion:paperReducedMotion});}spriteMaterials?.end(ctx);}
 export function clipMaterials(ctx,x,y,w,h){spriteMaterials?.clip(ctx,x,y,w,h)}
 export function restoreMaterials(){spriteMaterials?.restoreClip()}
 export function setMaterialFeatures(features){paperWorld?.setFeatures(features);spriteMaterials?.setFeatures(features)}
@@ -58,11 +63,22 @@ export function materialStats(){return {world:paperWorldStats(),sprites:spriteMa
 export function materialFeatures(){return spriteMaterials?.features||{ao:true,normals:true,metallic:true,lighting:true}}
 export function resetVisualMotion(time=null){actorAnimator.reset();fixtureClock=time}
 export function setPaperReducedMotion(value){paperReducedMotion=!!value;actorAnimator.setReducedMotion(paperReducedMotion)}
-export function paperAnimationStats(){return {frames:actorFrames.size,actors:actorAnimator.size,reducedMotion:paperReducedMotion,crossfadeMilliseconds:45,motionSheets:['motion-classic','motion-new'].filter(k=>!!art[k]),sourceFilter:PAPER_SOURCE_FILTER,cutEdges:'cached printed silhouette rim',effectCache:effectSprites.stats}}
-function surface(ctx,c,x,y,w,h,kind='paper'){ctx.drawImage(c,x,y,w,h);spriteMaterials?.record(ctx,c,x,y,w,h,kind)}
+export function paperAnimationStats(){return {frames:actorFrames.size,actors:actorAnimator.size,recentActors:actorAnimator.recentActors,rewardCue:'discrete paper stars beside feet; no passive-score head halo',magicEffect:'separated paper chips',reducedMotion:paperReducedMotion,crossfadeMilliseconds:PAPER_CROSSFADE_SECONDS*1000,impactBlendMilliseconds:PAPER_IMPACT_BLEND_SECONDS*1000,maxPoseLayers:3,characterFolds:'cached folded faces and matching ridge normals',characterSource:'smooth original outlined art; 768px cache; high-quality antialiasing',outfits:CHARACTER_CLOTH_STYLES.map(({character,name,label,color})=>({character,name,label,color})),poseToneProfiles:[...actorFrames].map(([key,f])=>({key,sheet:f.sheet,sourcePaper:f.sourceTone.paperLuma,preparedPaper:f.preparedTone.paperLuma,idlePaper:f.toneReference.paperLuma,bodyHeight:f.bodyHeight,canonicalBody:f.reference,normalizedScale:f.normalizedScale,renderedBodyAt100:paperFrameGeometry(f,f.reference,100).bodyHeight,sourceCrop:[...f.sourceCrop],sourceOverflow:{...f.sourceOverflow},sourceBounds:{x:f.x,y:f.y,width:f.width,height:f.height},cachedSize:{width:f.sprite.width,height:f.sprite.height},footAnchor:{x:f.anchorX,y:f.anchorY}})),environmentFrames:craftFrames.size,characterFoldMaps:spriteMaterials?.stats?.characterFoldMaps||0,foldedPoseCount:actorFrames.size,motionSheets:['motion-classic','motion-new'].filter(k=>!!art[k]),sourceFilter:PAPER_SOURCE_FILTER,cutEdges:'cached printed silhouette rim',effectCache:effectSprites.stats}}
+function drawCached(ctx,c,x,y,w,h){const rect=paperAtlasDrawRect(cachedFrames.get(c),x,y,w,h);ctx.drawImage(c,rect.x,rect.y,rect.width,rect.height);return rect;}
+function surface(ctx,c,x,y,w,h,kind='paper'){const rect=drawCached(ctx,c,x,y,w,h);spriteMaterials?.record(ctx,c,rect.x,rect.y,rect.width,rect.height,kind)}
 function cachedCut(name,sx,sy,sw,sh,maximum=512){
  const key=[name,sx,sy,sw,sh,maximum].join(':');if(paperSprites.has(key))return paperSprites.get(key);const im=art[name];if(!im)return null;
- const c=document.createElement('canvas'),scale=Math.min(1,maximum/Math.max(sw,sh));c.width=Math.ceil(sw*scale);c.height=Math.ceil(sh*scale);const cx=c.getContext('2d');cx.filter=PAPER_SOURCE_FILTER;cx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);paperSprites.set(key,c);return c;
+ const columns=name==='props'?4:name==='paper-objects'?3:0;
+ if(columns){
+  let prepared=atlasFrames.get(name);if(prepared?.image!==im){const source=document.createElement('canvas');source.width=im.width;source.height=im.height;const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(im,0,0);const pixels=sc.getImageData(0,0,im.width,im.height);pixels.data.set(cleanPaperEnvironmentPixels(pixels.data));prepared={image:im,atlas:createPaperAtlasFrames(pixels,{columns,rows:3,overflow:48})};atlasFrames.set(name,prepared);}
+  const frame=prepared.atlas.frame(Math.round(sx/(im.width/columns)),Math.round(sy/(im.height/3)));if(!frame||frame.empty)return null;
+  const source=document.createElement('canvas');source.width=frame.width;source.height=frame.height;source.getContext('2d').putImageData(new ImageData(frame.pixels,frame.width,frame.height),0,0);
+  const c=document.createElement('canvas'),scale=Math.min(1,maximum/Math.max(frame.width,frame.height));c.width=Math.ceil(frame.width*scale);c.height=Math.ceil(frame.height*scale);const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(source,0,0,c.width,c.height);cachedFrames.set(c,frame);paperSprites.set(key,c);return c;
+ }
+ const c=document.createElement('canvas'),scale=Math.min(1,maximum/Math.max(sw,sh));c.width=Math.ceil(sw*scale);c.height=Math.ceil(sh*scale);const illustrated=name==='pixel-fx'||name==='objectives',cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.filter=illustrated?'none':PAPER_SOURCE_FILTER;
+ let source=im;if(illustrated){let cleaned=cleanSources.get(name);if(cleaned?.image!==im){const canvas=document.createElement('canvas');canvas.width=im.width;canvas.height=im.height;const cc=canvas.getContext('2d',{willReadFrequently:true});cc.drawImage(im,0,0);const pixels=cc.getImageData(0,0,im.width,im.height);pixels.data.set(cleanPaperEnvironmentPixels(pixels.data));cc.putImageData(pixels,0,0);cleaned={image:im,canvas};cleanSources.set(name,cleaned);}source=cleaned.canvas;}
+ cx.drawImage(source,sx,sy,sw,sh,0,0,c.width,c.height);
+ paperSprites.set(key,c);return c;
 }
 // Original generated board pieces, cropped at their solid alpha bounds. The
 // transparent atlas stays intact; strips bend the chute art along the same path
@@ -78,7 +94,7 @@ const OBJECTS=['gauge','rope','altar','star','portal','pedestal','sign','crate',
 export function object(ctx,type,x,y,w=50,h=w,time=0,options={}){
  const index=OBJECTS.indexOf(type),im=art['paper-objects'];if(index<0||!im)return;const cw=im.width/3,ch=im.height/3,c=cachedCut('paper-objects',index%3*cw,Math.floor(index/3)*ch,cw,ch);if(!c)return;
  ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.translate(x,y);ctx.rotate(options.rotation||0);ctx.scale(options.flipX?-1:1,1);
- ctx.drawImage(c,-w/2+2,-h/2+3,w,h);surface(ctx,c,-w/2,-h/2,w,h,['gauge','altar','star','portal','crown','pedestal'].includes(type)?'foil':'paper');ctx.restore();
+ drawCached(ctx,c,-w/2+2,-h/2+3,w,h);surface(ctx,c,-w/2,-h/2,w,h,['gauge','altar','star','portal','crown','pedestal'].includes(type)?'foil':'paper');ctx.restore();
 }
 const PLATFORM_CUTS=[[90,10,1360,255],[280,277,974,235],[174,502,1179,281],[133,760,1280,250]];
 function preparePlatformFrames(){
@@ -98,29 +114,32 @@ export function platform(ctx,x,y,w,depth=40,time=0,variant=0){
  else{ctx.drawImage(c,x-3,y-topOffset*drawnHeight+4,w+6,drawnHeight);surface(ctx,c,x,y-topOffset*drawnHeight,w,drawnHeight,'foil');}ctx.restore();
 }
 export function fx(ctx,type,x,y,size=42,time=0,options={}){
- const im=art['pixel-fx'];if(!im)return;const row=({hit:0,dust:1,magic:2,shield:3}[type]??0),progress=options.progress;
- const frame=Number.isFinite(progress)?Math.min(3,Math.max(0,Math.floor(progress*4))):Math.floor(Math.abs(time)*12)%4;
- const cw=im.width/4,ch=im.height/4,source=cachedCut('pixel-fx',frame*cw,row*ch,cw,ch,64),c=effectSprites.get(source,['hit','dust','magic','shield'][row],frame,activeScene,options.color);if(!c)return;
- ctx.save();ctx.globalAlpha*=Math.max(0,Math.min(1,options.alpha??1));ctx.imageSmoothingEnabled=false;ctx.translate(Math.round(x/2)*2,Math.round(y/2)*2);ctx.rotate(options.rotation||0);ctx.scale(options.flipX?-1:1,1);ctx.drawImage(c,-size/2,-size/2,size,size);ctx.restore();
+ const im=art['pixel-fx'];if(!im)return;const progress=options.progress,{row,frame}=paperEffectFrame(type,time,progress);
+ const cw=im.width/4,ch=im.height/4,source=cachedCut('pixel-fx',frame*cw,row*ch,cw,ch,256),c=effectSprites.get(source,['hit','dust','magic','shield'][row],frame,activeScene,options.color);if(!c)return;
+ ctx.save();ctx.globalAlpha*=Math.max(0,Math.min(1,options.alpha??1));ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.translate(x,y);ctx.rotate(options.rotation||0);ctx.scale(options.flipX?-1:1,1);ctx.drawImage(c,-size/2,-size/2,size,size);ctx.restore();
 }
 function prepareActorFrames(){
  actorFrames.clear();portraits.clear();effectSprites.clear();actorAnimator.reset();const pixels=new Map();
  function imagePixels(name){if(pixels.has(name))return pixels.get(name);const im=art[name];if(!im)return null;const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);const data=cx.getImageData(0,0,c.width,c.height);pixels.set(name,data);return data;}
- function frame(name,cut){
-  const data=imagePixels(name);if(!data)return null;const bounds=measurePaperCell(data,{x:cut[0],y:cut[1],width:cut[2],height:cut[3]},{includeMask:true});if(bounds.empty)return null;
+ function frame(name,cut,characterId=0,toneReference=null){
+  const data=imagePixels(name);if(!data)return null;const bounds=measurePaperCell(data,{x:cut[0],y:cut[1],width:cut[2],height:cut[3]},{includeMask:true,overflow:48});if(bounds.empty)return null;
   const source=document.createElement('canvas');source.width=bounds.width;source.height=bounds.height;const sc=source.getContext('2d'),rgba=sc.createImageData(bounds.width,bounds.height);
   for(let y=0;y<bounds.height;y++)for(let x=0;x<bounds.width;x++){const ix=bounds.x+x,iy=bounds.y+y,mx=ix-bounds.cellX,my=iy-bounds.cellY,at=(y*bounds.width+x)*4,original=(iy*data.width+ix)*4;if(mx<0||my<0||mx>=bounds.cellWidth||my>=bounds.cellHeight||!bounds.mask[my*bounds.cellWidth+mx])continue;rgba.data[at]=data.data[original];rgba.data[at+1]=data.data[original+1];rgba.data[at+2]=data.data[original+2];rgba.data[at+3]=data.data[original+3];}sc.putImageData(rgba,0,0);
-  const sprite=document.createElement('canvas'),scale=Math.min(1,384/Math.max(bounds.width,bounds.height));sprite.width=Math.ceil(bounds.width*scale);sprite.height=Math.ceil(bounds.height*scale);const cx=sprite.getContext('2d',{willReadFrequently:true});cx.filter=PAPER_SOURCE_FILTER;cx.drawImage(source,0,0,sprite.width,sprite.height);
-  const printed=cx.getImageData(0,0,sprite.width,sprite.height);printed.data.set(paperCutEdgePixels(printed.data,sprite.width,sprite.height,Math.max(sprite.width,sprite.height)*.008));cx.putImageData(printed,0,0);
-  const {mask,cellX,cellY,cellWidth,cellHeight,...metrics}=bounds;return {sprite,...metrics,reference:metrics.bodyHeight,sheet:name};
+  const sprite=document.createElement('canvas'),scale=Math.min(1,768/Math.max(bounds.width,bounds.height));sprite.width=Math.ceil(bounds.width*scale);sprite.height=Math.ceil(bounds.height*scale);const cx=sprite.getContext('2d',{willReadFrequently:true});cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(source,0,0,sprite.width,sprite.height);
+  const printed=cx.getImageData(0,0,sprite.width,sprite.height),styleMetrics={bodyTop:bounds.bodyTop*scale,bodyCenterX:bounds.bodyCenterX*scale,bodyHeight:bounds.bodyHeight*scale,anchorX:bounds.anchorX*scale,anchorY:bounds.anchorY*scale},sourceTone=measureCharacterTone(printed.data,sprite.width,sprite.height,{metrics:styleMetrics}),referenceTone=toneReference||sourceTone;
+  printed.data.set(harmonizePaperCharacterPixels(printed.data,sprite.width,sprite.height,{character:characterId,metrics:styleMetrics,toneReference:referenceTone}));
+  printed.data.set(paperCutEdgePixels(printed.data,sprite.width,sprite.height,Math.max(sprite.width,sprite.height)*.008));printed.data.set(foldPaperCharacterPixels(printed.data,sprite.width,sprite.height,{character:characterId,metrics:styleMetrics}));cx.putImageData(printed,0,0);
+  const preparedTone=measureCharacterTone(printed.data,sprite.width,sprite.height,{metrics:styleMetrics});
+  const sourceOverflow={left:Math.max(0,cut[0]-bounds.x),top:Math.max(0,cut[1]-bounds.y),right:Math.max(0,bounds.x+bounds.width-cut[0]-cut[2]),bottom:Math.max(0,bounds.y+bounds.height-cut[1]-cut[3])};
+  const {mask,cellX,cellY,cellWidth,cellHeight,...metrics}=bounds;return {sprite,...metrics,reference:metrics.bodyHeight,sheet:name,sourceTone,toneReference:referenceTone,preparedTone,sourceCrop:[...cut],sourceOverflow};
  }
  for(let idx=0;idx<8;idx++){
-  const classic=idx<4,row=idx%4,idle=frame(classic?'characters':'characters-new',classic?cuts[idx]:NEW_CUTS[row][0]);
-  if(!idle)continue;actorFrames.set(idx+':idle',idle);
-  const peaks=[frame(classic?'character-attacks':'characters-new',classic?ATTACK_CUTS[idx][0]:NEW_CUTS[row][1]),frame(classic?'character-attacks':'characters-new',classic?ATTACK_CUTS[idx][1]:NEW_CUTS[row][2])],peakReference=referenceBodyHeight(peaks);
-  peaks.forEach((f,i)=>{if(f){f.reference=peakReference;actorFrames.set(idx+':'+(i?'special-peak':'attack-peak'),f);}});
-  const sheet=classic?'motion-classic':'motion-new',im=art[sheet];if(!im)continue;const cells=Array.from({length:6},(_,col)=>frame(sheet,[col*im.width/6,row*im.height/4,im.width/6,im.height/4])),reference=referenceBodyHeight(cells);
-  for(const [pose,column]of Object.entries(MOTION_COLUMNS)){const f=cells[column];if(f){f.reference=reference;actorFrames.set(idx+':'+pose,f);}}
+  const classic=idx<4,row=idx%4,idle=frame(classic?'characters':'characters-new',classic?cuts[idx]:NEW_CUTS[row][0],idx);
+  if(!idle)continue;actorFrames.set(idx+':idle',normalizePaperFrame(idle,idle));
+  const peaks=[frame(classic?'character-attacks':'characters-new',classic?ATTACK_CUTS[idx][0]:NEW_CUTS[row][1],idx,idle.sourceTone),frame(classic?'character-attacks':'characters-new',classic?ATTACK_CUTS[idx][1]:NEW_CUTS[row][2],idx,idle.sourceTone)];
+  peaks.forEach((f,i)=>{if(f)actorFrames.set(idx+':'+(i?'special-peak':'attack-peak'),normalizePaperFrame(f,idle));});
+  const sheet=classic?'motion-classic':'motion-new',im=art[sheet];if(!im)continue;const cells=Array.from({length:6},(_,col)=>frame(sheet,paperMotionCut(idx,col,im.width,im.height),idx,idle.sourceTone));
+  for(const [pose,column]of Object.entries(MOTION_COLUMNS)){const f=cells[column];if(f)actorFrames.set(idx+':'+pose,normalizePaperFrame(f,idle));}
  }
  pixels.clear();
 }
@@ -131,16 +150,16 @@ export function character(ctx,p,x,y,size=80,options={}){
  if(!canvasScopes.has(ctx.canvas))canvasScopes.set(ctx.canvas,++nextCanvasScope);
  const key=canvasScopes.get(ctx.canvas)+':'+activeScene+':'+(options.portrait?'hud:':'actor:')+(p.id??idx);
  const pose=actorAnimator.sample(key,p,{...options,time:t,x,y,reducedMotion:options.reducedMotion??paperReducedMotion});size*=activeScene==='world'?1.08:1.28;
- ctx.save();ctx.translate(pose.footX,pose.footY);ctx.fillStyle='rgba(8,7,6,.28)';ctx.beginPath();ctx.ellipse(2,4,size*.27,size*.055,0,0,Math.PI*2);ctx.fill();
+ ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.translate(pose.footX,pose.footY);ctx.fillStyle='rgba(8,7,6,.28)';ctx.beginPath();ctx.ellipse(2,4,size*.27,size*.055,0,0,Math.PI*2);ctx.fill();
  if(pose.land>.2)fx(ctx,'dust',0,2,size*.7,t,{progress:1-pose.land,alpha:pose.land});
  ctx.rotate(pose.rotation);ctx.scale(pose.turn*pose.sx*(options.scaleX??1),pose.sy*(options.scaleY??1));
- for(const layer of pose.layers){if(layer.alpha<=.002)continue;const fallback=layer.pose.startsWith('special')?'special-peak':layer.pose==='anticipation'||layer.pose==='followthrough'?'attack-peak':'idle',f=actorFrames.get(idx+':'+layer.pose)||actorFrames.get(idx+':'+fallback)||actorFrames.get(idx+':idle'),rect=paperFrameGeometry(f,f.reference,size);ctx.save();ctx.globalAlpha*=layer.alpha*(options.hurt?.78:1);surface(ctx,f.sprite,rect.x,rect.y,rect.width,rect.height,[2,4].includes(idx)?'foil':'paper');ctx.restore();}
+ for(const layer of pose.layers){if(layer.alpha<=.002)continue;const fallback=layer.pose.startsWith('special')?'special-peak':layer.pose==='anticipation'||layer.pose==='followthrough'?'attack-peak':'idle',f=actorFrames.get(idx+':'+layer.pose)||actorFrames.get(idx+':'+fallback)||actorFrames.get(idx+':idle'),rect=paperFrameGeometry(f,f.reference,size);ctx.save();ctx.globalAlpha*=layer.alpha*(options.hurt?.78:1);surface(ctx,f.sprite,rect.x,rect.y,rect.width,rect.height,[2,4].includes(idx)?'character-foil:'+idx:'character:'+idx);ctx.restore();}
  const facing=pose.turn<0?-1:1;
  if(pose.attack>0)fx(ctx,'hit',facing*size*.3,-size*.55,size*.5,t,{progress:1-pose.attack,alpha:.9});
  if(pose.hurt>.2)fx(ctx,'hit',0,-size*.7,size*.65,t,{progress:1-pose.hurt});
- if(pose.win>.2)fx(ctx,'magic',0,-size*.8,size*.65,t,{progress:1-pose.win,alpha:pose.win});
  ctx.restore();
- if(options.label){ctx.save();ctx.font='bold 11px Georgia,serif';ctx.textAlign='center';ctx.fillStyle='#f7f3e9';ctx.strokeStyle='#171918';ctx.lineWidth=4;ctx.strokeText(options.label,x,y-size-9);ctx.fillText(options.label,x,y-size-9);ctx.restore()}
+ if(pose.win>.2){const spread=(1-pose.win)*size*.3;for(const side of[-1,1]){object(ctx,'star',pose.footX+side*(size*.3+spread),pose.footY-size*.17-spread*.25,15+pose.win*8,15+pose.win*8,t,{rotation:side*(1-pose.win)*2.2,alpha:pose.win});}fx(ctx,'magic',pose.footX,pose.footY-7,size*.5,t,{progress:1-pose.win,alpha:pose.win*.5});}
+ if(options.label){ctx.save();ctx.font=gameFont(11);ctx.textAlign='center';ctx.fillStyle='#f7f3e9';ctx.strokeStyle='#171918';ctx.lineWidth=4;ctx.strokeText(options.label,x,y-size-9);ctx.fillText(options.label,x,y-size-9);ctx.restore()}
 }
 
 export function prop(ctx,name,x,y,size=40,rotation=0){
@@ -159,9 +178,42 @@ function cover(ctx,im,w,h,opacity=1,time=0,breathing=false){
 export function drawWorld(ctx,w=960,h=540,opacity=1){activeScene='world';activeTime=clock();ctx.save();ctx.globalAlpha*=opacity;const done=paperWorld?.draw(ctx,'world',clock(),w,h)||cover(ctx,art.world||art.city,w,h);ctx.restore();return done;}
 export function drawCity(ctx,w=960,h=540,opacity=1){return drawWorld(ctx,w,h,opacity);}
 export function background(ctx,id='world',time=0){
- if(paperWorld?.draw(ctx,id,Number.isFinite(time)?time:0,960,540,activeLighting))return true;
- const im=id==='world'?art.world:art[`scene-${id}`];
- return cover(ctx,im||art.world||art.city,960,540,1,Number.isFinite(time)?time:0,true);
+ const t=Number.isFinite(time)?time:0;
+ const drawn=paperWorld?.draw(ctx,id,t,960,540,activeLighting)||cover(ctx,(id==='world'?art.world:art[`scene-${id}`])||art.world||art.city,960,540,1,t,true);
+ environmentView=drawPaperEnvironment(ctx,id,t,helpers,{context:activeContext||{},lighting:activeLighting,reducedMotion:paperReducedMotion});return drawn;
+}
+export function paperEnvironmentStats(){return environmentView?{id:environmentView.id,time:environmentView.time,drawn:environmentView.drawn,response:environmentView.response,pieces:environmentView.pieces,foreground:foregroundView?{available:foregroundView.available,drawn:foregroundView.drawn,layer:foregroundView.layer,pieces:foregroundView.pieces}:null}:null;}
+const CHALLENGE_CUTS={tweezers:[0,0,420,440],heart:[425,0,430,440],gear:[859,0,392,440],bell:[1252,0,420,440],block:[0,440,420,501],stack:[420,440,440,501],counterweight:[860,440,392,501],crown:[1252,440,420,501]};
+function prepareCraftFrames(){
+ craftFrames.clear();
+ for(const [name,cuts]of [['folded-environment',Object.fromEntries(PAPER_ENVIRONMENT_KINDS.map((kind,index)=>[kind,PAPER_ENVIRONMENT_CUTS[index]]))],['challenge-props',CHALLENGE_CUTS]]){
+  const im=art[name];if(!im)continue;const source=document.createElement('canvas');source.width=im.width;source.height=im.height;const cx=source.getContext('2d',{willReadFrequently:true});cx.drawImage(im,0,0);const pixels=cx.getImageData(0,0,im.width,im.height);pixels.data.set(cleanPaperEnvironmentPixels(pixels.data));
+  for(const [kind,cut]of Object.entries(cuts)){
+   const bounds=measurePaperCell(pixels,{x:cut[0],y:cut[1],width:cut[2],height:cut[3]},{includeMask:true});if(bounds.empty)continue;
+   const frame=document.createElement('canvas');frame.width=bounds.width;frame.height=bounds.height;const fc=frame.getContext('2d'),rgba=fc.createImageData(frame.width,frame.height);
+   for(let y=0;y<frame.height;y++)for(let x=0;x<frame.width;x++){const ix=bounds.x+x,iy=bounds.y+y,mx=ix-bounds.cellX,my=iy-bounds.cellY;if(!bounds.mask[my*bounds.cellWidth+mx])continue;const at=(y*frame.width+x)*4,original=(iy*pixels.width+ix)*4;rgba.data.set(pixels.data.subarray(original,original+4),at);}
+   rgba.data.set(paperCutEdgePixels(rgba.data,frame.width,frame.height,2));fc.putImageData(rgba,0,0);craftFrames.set(name+':'+kind,frame);
+   if(name==='folded-environment')craftPleats.set(frame,Array.from({length:4},(_,n)=>{const strip=document.createElement('canvas');strip.width=Math.ceil(frame.width/4);strip.height=frame.height;const sc=strip.getContext('2d');sc.imageSmoothingEnabled=true;sc.imageSmoothingQuality='high';sc.drawImage(frame,n*frame.width/4,0,frame.width/4,frame.height,0,0,strip.width,strip.height);return strip;}));
+  }
+ }
+}
+export function environmentPiece(ctx,kind,x,feetY,w,h,options={}){
+ const c=craftFrames.get('folded-environment:'+kind);if(!c)return;
+ ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.translate(x,feetY);ctx.rotate(options.rotation||0);ctx.scale(options.scaleX??1,options.scaleY??1);
+ ctx.save();ctx.globalAlpha*=.22;ctx.drawImage(c,-w/2+4,-h+5,w,h);ctx.restore();
+ // Four printed accordion faces share their original source image. Smooth hinge
+ // offsets expose depth without substituting a vector shape for the illustration.
+ const fold=Math.max(0,Math.min(.4,options.fold||0));
+ const strips=craftPleats.get(c);for(let n=0;n<4;n++){const dx=-w/2+n*w/4,depth=(n%2?1:-1)*fold*h*.065;if(strips?.[n])surface(ctx,strips[n],dx,-h+depth,w/4,h);}
+ ctx.restore();
+}
+export function challengeTable(ctx,table,slot=0,count=4){
+ const im=art['scene-clockwork-surgery'];if(!im)return;const col=Math.max(0,Math.min(3,slot)),cw=im.width/4;ctx.save();ctx.drawImage(im,col*cw+7,im.height*.57,cw-14,im.height*.247,table.x,table.y,table.w,table.h);ctx.restore();
+}
+export function challengePiece(ctx,kind,x,y,size,options={}){
+ const c=craftFrames.get('challenge-props:'+kind);if(!c)return;
+ const w=options.width??size*c.width/c.height,height=options.height??size;ctx.save();ctx.globalAlpha*=options.alpha??1;ctx.translate(x,y);ctx.rotate(options.rotation||0);ctx.scale(options.scaleX??1,options.scaleY??(1-(options.squash||0)*.1));
+ surface(ctx,c,-w/2,options.feet?-height:-height/2,w,height,['gear','heart','bell','counterweight','crown'].includes(kind)?'foil':'paper');ctx.restore();
 }
 /** Draw generated objective sprites with a common feet anchor. */
 export function objective(ctx,kind,x,feetY,size=60,options={}){
@@ -179,8 +231,15 @@ export function uiFrame(ctx,x,y,w,h,options={}){
  if(im){const sx=270,sy=230,d=Math.min(27,h*.36,w*.16),xs=[0,sx,im.width-sx],ys=[0,sy,im.height-sy],ws=[sx,im.width-2*sx,sx],hs=[sy,im.height-2*sy,sy],dx=[x,x+d,x+w-d],dy=[y,y+d,y+h-d],dw=[d,w-2*d,d],dh=[d,h-2*d,d];for(let r=0;r<3;r++)for(let c=0;c<3;c++)if(r!==1||c!==1){const plainFooter=options.variant==='plaque'&&r===2&&c===1;ctx.drawImage(im,plainFooter?Math.floor(im.width*.40):xs[c],ys[r],plainFooter?Math.floor(im.width*.025):ws[c],hs[r],dx[c],dy[r],dw[c],dh[r]);}}
  ctx.restore();
 }
-export const helpers={character,prop,background,platform,object,fx,beginScene,endScene,clipMaterials,restoreMaterials,boardPiece,objective,feast,uiFrame};
+export const helpers={character,prop,background,platform,object,fx,beginScene,endScene,clipMaterials,restoreMaterials,boardPiece,objective,feast,uiFrame,environmentPiece,challengePiece,challengeTable};
 export function portrait(index,className=''){
  const idx=Math.max(0,Math.min(7,Number(index)||0));let src=portraits.get(idx);if(!src){const cut=idx<4?cuts[idx]:NEW_CUTS[idx-4][0],c=actorFrames.get(idx+':idle')?.sprite||cachedCut(idx<4?'characters':'characters-new',...cut,256);src=c?.toDataURL('image/png')||'';portraits.set(idx,src)}
  return `<img class="portrait ${CHARACTERS[idx].className} ${className}" src="${src}" alt="" aria-hidden="true" draggable="false">`;
+}
+/** Menu icons share the same isolated original prop art as the game renderer. */
+export function propPortrait(name){
+ const index=PROP_NAMES.indexOf(name),im=art.props;if(index<0||!im)return '';
+ const c=cachedCut('props',index%4*im.width/4,Math.floor(index/4)*im.height/3,im.width/4,im.height/3);if(!c)return '';
+ const previous=propPortraits.get(name);if(previous?.source===c)return previous.url;
+ const url=c.toDataURL('image/png');propPortraits.set(name,{source:c,url});return url;
 }
